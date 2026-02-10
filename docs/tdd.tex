@@ -1,0 +1,231 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{fancyhdr}
+
+%----------------------------
+% Title and Formatting
+%----------------------------
+\titleformat{\section}{\large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{}
+\setlist{nosep}
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{Technical Design Document}
+\lhead{\leftmark}
+\cfoot{\thepage}
+
+\title{\textbf{Technical Design Document}\\[0.5em]\large [Project Title]}
+
+\author{
+    [Team Name] \\
+    \texttt{[team-email@example.com]}
+}
+
+\date{\today}
+
+%----------------------------
+\begin{document}
+\maketitle
+\newpage
+\tableofcontents
+\newpage
+
+%----------------------------
+\section{Overview}
+%Describe the purpose of this document and its intended audience.  
+%Mention any prerequisite knowledge required before reading.  
+%Specify whether it targets a technical or non-technical audience.
+The purpose of this document is to present the technical design of [describe your system/project]. \\\\
+This document is intended for a technical audience with a background in [relevant fields]. Non-technical readers may find high-level summaries useful but should refer to supplementary documentation at the end of this document for background on the underlying mechanisms employed.
+\newpage
+%----------------------------
+\section{Problem}
+
+[Describe the current state and limitations]
+
+\subsection{The Core Problem}
+
+[Describe the specific problem your system addresses]
+
+\subsection{The Core Goal}
+
+The goal is to develop [describe your solution]:
+\begin{itemize}
+    \item [Goal 1]
+    \item [Goal 2]
+    \item [Goal 3]
+\end{itemize}
+\newpage
+%----------------------------
+\section{Tenets}
+TODO!
+List the key principles or beliefs guiding the design decisions.  
+Tenets help align teams and establish common ground on critical design questions.
+\newpage
+%----------------------------
+\section{Requirements}
+TODO! Describe all requirements imposed by the problem.  
+Write from the end-user's perspective. Include user stories or use cases.
+
+\subsection*{Example Use Cases}
+\begin{itemize}
+  \item As a [user type], I want to [action].
+  \item As a [user type], I want [capability].
+\end{itemize}
+%----------------------------
+\subsection{Out of Scope}
+TODO! List what is explicitly out of scope to avoid misunderstandings.
+
+%----------------------------
+\subsection{Success Criteria}
+TODO! Describe how success will be measured once the solution is in production.  
+Include measurable metrics such as performance, scalability, or cost efficiency.
+
+\subsection*{Example Metrics}
+\begin{itemize}
+  \item [Metric 1]
+  \item [Metric 2]
+  \item [Metric 3]
+\end{itemize}
+\newpage
+%----------------------------
+\section{Architecture}
+Describe the architecture of the proposed solution using text, diagrams, and bullet points.  
+Explain why this design was chosen.
+
+\subsection{High-Level Overview (HLD)}
+List all logical system components:
+\begin{itemize}
+  \item Component 1
+  \item Component 2
+  \item Component 3
+  \item Component 4
+  \item Component 5
+\end{itemize}
+
+Include diagrams as needed:
+\begin{center}
+%\includegraphics[width=0.8\textwidth]{architecture-diagram.png}
+\end{center}
+
+\subsection{API Design}
+List all APIs used for interaction between users or services.  
+Include HTTP methods, payloads, versions, and example requests/responses.  
+Discuss future evolution of the APIs.
+
+\subsection{Data Storage and Model}
+Describe the data model and database choice.  
+Estimate data volume, forecast growth, and justify scalability.  
+Discuss data pipelines, ingestion, and pre-processing if applicable.
+
+\subsection{Application / Component Level Design (LLD)}
+Provide detailed design of each system component, including data flow and control flow diagrams.
+
+\newpage
+%----------------------------
+\section{Dependencies}
+List external and internal dependencies.  
+Document assumptions and risks associated with these dependencies.
+%----------------------------
+\subsection{Design Alternatives Considered}
+Discuss alternative designs evaluated.  
+Provide a comparison table highlighting trade-offs.
+
+\begin{longtable}{@{}p{3cm}p{5cm}p{5cm}@{}}
+\toprule
+\textbf{Option} & \textbf{Pros} & \textbf{Cons} \\ \midrule
+Option A & [Advantages] & [Disadvantages] \\
+Option B & [Advantages] & [Disadvantages] \\ \bottomrule
+\end{longtable}
+
+\newpage
+%----------------------------
+\section{Cost Analysis}
+Estimate infrastructure and operational costs.  
+Plan for future growth and scalability.
+
+\newpage
+%----------------------------
+\section{Failures and Risks}
+Discuss potential system failures such as:
+\begin{itemize}
+  \item Dependency failures
+  \item Traffic overflow
+  \item Performance degradation
+  \item Logic bugs
+\end{itemize}
+
+Identify risks such as external dependencies or resource limitations.  
+Include potential mitigation strategies.
+
+\newpage
+%----------------------------
+\section{Non-Functional Requirements}
+Cover scalability, availability, maintainability, reliability, latency, and security.
+
+\subsection{Scalability}
+Expected users, transactions, and data volume.
+
+\subsection{Latency and Availability}
+Define SLAs (e.g., P99, P50 latency targets).
+
+\subsection{Maintainability}
+Explain maintenance expectations and ownership.
+
+\subsection{Security}
+Describe security measures and required compliance levels.
+
+\newpage
+%----------------------------
+\section{Testing and Observability}
+Outline strategies for testing, monitoring, and alerting.
+
+\subsection{Testing}
+Explain testing approach: unit, integration, A/B, or stress tests.
+
+\subsection{Metrics and Alarms}
+List key performance metrics, dashboards, and alert configurations.
+
+\newpage
+%----------------------------
+\section{Future Improvements}
+List planned features or improvements for future releases.
+
+\newpage
+%----------------------------
+\section{FAQs}
+Include frequently asked questions and their answers.
+
+[Question?]
+[Answer here]
+
+\newpage
+%----------------------------
+\appendix
+\section{Appendix A: Subtitle (Optional)}
+Include detailed technical analysis or supporting data.
+
+\newpage
+%----------------------------
+\section{Glossary}
+\begin{description}
+  \item[Term 1] Definition
+  \item[Term 2] Definition
+\end{description}
+
+\newpage
+%----------------------------
+\section{References}
+\begin{itemize}
+  \item [Reference 1]: \url{https://example.com}
+  \item [Reference 2]: \url{https://example.com}
+\end{itemize}
+
+\end{document}
