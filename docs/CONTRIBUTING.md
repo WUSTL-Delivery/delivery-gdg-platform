@@ -76,6 +76,26 @@ Enhancements are tracked on Linear.
 
 <!-- You might want to create an issue template for enhancement suggestions that can be used as a guide and that defines the structure of the information to be included. If you do so, reference it here in the description. -->
 
+### Code Contributions
+
+To test the client interface: 
+
+For deployments (Kafka Zookeeper):
+cd deployments
+Install Docker Desktop
+docker-compose up -d 
+go to http://localhost:8080/
+
+For authoritative:
+cd apps/authoritative
+go run cmd/authoritative/main.go 
+
+For web interface:
+cd apps/client/web 
+npm install
+npm run dev 
+Then visit http://localhost:3000/
+
 ## Styleguides
 ### Commit Messages
 
