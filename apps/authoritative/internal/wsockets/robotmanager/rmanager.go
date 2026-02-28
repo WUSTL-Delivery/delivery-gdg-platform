@@ -4,8 +4,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/jaximus808/delivery-gdg-platform/main/apps/authoritative/internal/matcher"
-	"github.com/jaximus808/delivery-gdg-platform/main/apps/authoritative/internal/wsockets"
+	"github.com/WUSTL-Delivery/delivery-gdg-platform/main/apps/authoritative/internal/matcher"
+	"github.com/WUSTL-Delivery/delivery-gdg-platform/main/apps/authoritative/internal/wsockets"
 )
 
 func StartRobotManager(orm *matcher.OrderRobotMatcher, match chan (*matcher.OrderRobotMatch)) {

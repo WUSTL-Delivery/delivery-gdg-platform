@@ -1,6 +1,6 @@
 package robots
 
-import "github.com/jaximus808/delivery-gdg-platform/main/apps/authoritative/internal/wsockets"
+import "github.com/WUSTL-Delivery/delivery-gdg-platform/main/apps/authoritative/internal/wsockets"
 
 type RobotStage struct {
 	robotID int

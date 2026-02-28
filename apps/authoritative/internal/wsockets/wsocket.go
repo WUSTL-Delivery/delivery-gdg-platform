@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/WUSTL-Delivery/delivery-gdg-platform/main/apps/authoritative/internal/matcher"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/jaximus808/delivery-gdg-platform/main/apps/authoritative/internal/matcher"
 )
 
 var upgrader = websocket.Upgrader{
