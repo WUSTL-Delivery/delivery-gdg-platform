@@ -78,32 +78,22 @@ Enhancements are tracked on Linear.
 
 ### Code Contributions
 
-To test the client's interface: 
+To test the client interface: 
 
-#### Deployments
-
+For deployments (Kafka Zookeeper):
 cd deployments
-
 Install Docker Desktop
-
 docker-compose up -d 
+go to http://localhost:8080/
 
-Then visit http://localhost:8080/
-
-#### Authoritative
-
+For authoritative:
 cd apps/authoritative
-
 go run cmd/authoritative/main.go 
 
-#### Web Interface:
-
+For web interface:
 cd apps/client/web 
-
 npm install
-
 npm run dev 
-
 Then visit http://localhost:3000/
 
 ## Styleguides
