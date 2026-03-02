@@ -161,20 +161,9 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	// --- TESTING DATABASE CONNECTION ---
+	// --- TESTING DATABASE FUNCTIONS---
 	database := db.New()
 
-	testCoord := db.Coordinate{
-		X:    670,
-		Y:    670,
-		Meta: map[string]string{"label": "test-point"},
-		Type: db.CoordinateTypeWaypoint,
-	}
-	if err := database.InsertCoordinate(context.Background(), testCoord); err != nil {
-		log.Printf("InsertCoordinate test FAILED: %v", err)
-	} else {
-		log.Println("InsertCoordinate test PASSED: coordinate inserted into Supabase")
-	}
 	// --- END TEST ---
 
 	orm := matcher.CreateOrderRobotMatcher()

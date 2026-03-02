@@ -57,13 +57,14 @@ type OrderItem struct {
 }
 
 type Order struct {
-	ID              int64  `json:"id"`
-	UserID          string `json:"userId"`
-	VendorID        string `json:"vendorId"`
-	Status          int    `json:"status"`
-	CreatedAt       string `json:"createdAt"`
-	RobotID         string `json:"robotId"`
-	DropOffLocation string `json:"dropOffLocation"`
+	ID              int64       `json:"id"`
+	UserID          string      `json:"userId"`
+	VendorID        string      `json:"vendorId"`
+	Status          string      `json:"status"`
+	CreatedAt       string      `json:"createdAt"`
+	RobotID         string      `json:"robotId"`
+	DropOffLocation string      `json:"dropOffLocation"`
+	OrderItems      []OrderItem `json:"orderItems"`
 }
 
 type Robot struct {
@@ -115,6 +116,7 @@ func (db *Database) ListCoordinates(ctx context.Context) ([]Coordinate, error) {
 func (db *Database) DeleteCoordinate(ctx context.Context, id string) error { return nil }
 
 // *
+// how does orderItems work?
 func (db *Database) CreateOrder(ctx context.Context, o Order) error {
 	data := map[string]interface{}{
 		"userId":          o.UserID,
@@ -122,9 +124,11 @@ func (db *Database) CreateOrder(ctx context.Context, o Order) error {
 		"status":          o.Status,
 		"dropOffLocation": o.DropOffLocation,
 	}
+
 	if o.RobotID != "" {
 		data["robotId"] = o.RobotID
 	}
+
 	_, _, err := db.client.From("orders").Insert(data, false, "", "", "").Execute()
 	if err != nil {
 		return fmt.Errorf("CreateOrder: %w", err)
@@ -138,6 +142,7 @@ func (db *Database) GetOrder(ctx context.Context, id int64) (Order, error) {
 	if err != nil {
 		return Order{}, fmt.Errorf("GetOrder: %w", err)
 	}
+
 	var orders []Order
 	if err := json.Unmarshal(res, &orders); err != nil {
 		return Order{}, fmt.Errorf("GetOrder unmarshal: %w", err)
@@ -154,6 +159,7 @@ func (db *Database) ListOrdersByUser(ctx context.Context, userID string) ([]Orde
 	if err != nil {
 		return nil, fmt.Errorf("ListOrdersByUser: %w", err)
 	}
+
 	var orders []Order
 	if err := json.Unmarshal(res, &orders); err != nil {
 		return nil, fmt.Errorf("ListOrdersByUser unmarshal: %w", err)
@@ -166,7 +172,7 @@ func (db *Database) ListOrdersByVendor(ctx context.Context, vendorID string) ([]
 }
 
 // *
-func (db *Database) UpdateOrderStatus(ctx context.Context, id int64, status int) error {
+func (db *Database) UpdateOrderStatus(ctx context.Context, id int64, status string) error {
 	data := map[string]interface{}{"status": status}
 	_, _, err := db.client.From("orders").Update(data, "", "").Eq("id", strconv.FormatInt(id, 10)).Execute()
 	if err != nil {
