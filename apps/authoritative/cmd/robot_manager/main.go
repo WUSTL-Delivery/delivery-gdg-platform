@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/jaximus808/delivery-gdg-platform/main/apps/authoritative/internal/events/robotmanager"
+	"github.com/WUSTL-Delivery/delivery-gdg-platform/main/apps/authoritative/internal/events/robotmanager"
 )
 
 func main() {

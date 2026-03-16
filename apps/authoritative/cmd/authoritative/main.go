@@ -10,13 +10,13 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/jaximus808/delivery-gdg-platform/main/apps/authoritative/internal/matcher"
-	"github.com/jaximus808/delivery-gdg-platform/main/apps/authoritative/internal/wsockets/robotmanager"
+	"github.com/WUSTL-Delivery/delivery-gdg-platform/main/apps/authoritative/internal/matcher"
+	"github.com/WUSTL-Delivery/delivery-gdg-platform/main/apps/authoritative/internal/wsockets/robotmanager"
 	"github.com/joho/godotenv"
 	"github.com/supabase-community/supabase-go"
 	"google.golang.org/grpc"
 
-	pb "github.com/jaximus808/delivery-gdg-platform/main/apps/authoritative/proto"
+	pb "github.com/WUSTL-Delivery/delivery-gdg-platform/main/apps/authoritative/proto"
 )
 
 type server struct {

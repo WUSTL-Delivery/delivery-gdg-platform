@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+package robot;
+
+option go_package = "/proto;order_service";
+
+// Robot service for handling robot-to-server communication
+service RobotService {
+  // Send position updates from robot to server
+  rpc UpdatePosition(PositionUpdate) returns (PositionAck);
+  
+  // Send battery level updates
+  rpc UpdateBattery(BatteryUpdate) returns (BatteryAck);
+  
+  // Send status changes (idle, moving, delivering, etc.)
+  rpc UpdateStatus(StatusUpdate) returns (StatusAck);
+  
+  // Stream multiple updates (more efficient for frequent updates)
+  rpc StreamUpdates(stream RobotUpdate) returns (stream UpdateAck);
+}
+
+// Position update message
+message PositionUpdate {
+  string robot_id = 1;
+  double latitude = 2;
+  double longitude = 3;
+  double heading = 4;  // Direction in degrees (0-360)
+  double speed = 5;    // Speed in m/s
+  int64 timestamp = 6; // Unix timestamp in milliseconds
+}
+
+// Battery update message
+message BatteryUpdate {
+  string robot_id = 1;
+  float battery_level = 2;  // Battery percentage (0-100)
+  bool is_charging = 3;
+  int64 timestamp = 4;
+}
+
+// Status update message
+message StatusUpdate {
+  string robot_id = 1;
+  RobotStatus status = 2;
+  string current_order_id = 3;  // Empty if no active order
+  string error_message = 4;      // Error details if status is ERROR
+  int64 timestamp = 5;
+}
+
+// Combined update message for streaming
+message RobotUpdate {
+  oneof update {
+    PositionUpdate position = 1;
+    BatteryUpdate battery = 2;
+    StatusUpdate status = 3;
+  }
+}
+
+// Robot status enum
+enum RobotStatus {
+  UNKNOWN = 0;
+  IDLE = 1;
+  ASSIGNED = 2;
+  MOVING_TO_PICKUP = 3;
+  AT_PICKUP = 4;
+  MOVING_TO_DROPOFF = 5;
+  AT_DROPOFF = 6;
+  RETURNING = 7;
+  CHARGING = 8;
+  OFFLINE = 9;
+  ERROR = 10;
+  MAINTENANCE = 11;
+}
+
+// Acknowledgment messages
+message PositionAck {
+  bool success = 1;
+  string message = 2;
+}
+
+message BatteryAck {
+  bool success = 1;
+  string message = 2;
+}
+
+message StatusAck {
+  bool success = 1;
+  string message = 2;
+}
+
+message UpdateAck {
+  bool success = 1;
+  string message = 2;
+  int64 timestamp = 3;
+}

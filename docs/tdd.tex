@@ -21,11 +21,11 @@
 \lhead{\leftmark}
 \cfoot{\thepage}
 
-\title{\textbf{Technical Design Document}\\[0.5em]\large [Project Title]}
+\title{\textbf{Technical Design Document}\\[0.5em]\large WashU GDG Delivery Robot Platform}
 
 \author{
-    [Team Name] \\
-    \texttt{[team-email@example.com]}
+    WashU Delivery GDG Team \\
+    \texttt{github.com/WUSTL-Delivery/delivery-gdg-platform}
 }
 
 \date{\today}
@@ -39,193 +39,215 @@
 
 %----------------------------
 \section{Overview}
-%Describe the purpose of this document and its intended audience.  
-%Mention any prerequisite knowledge required before reading.  
-%Specify whether it targets a technical or non-technical audience.
-The purpose of this document is to present the technical design of [describe your system/project]. \\\\
-This document is intended for a technical audience with a background in [relevant fields]. Non-technical readers may find high-level summaries useful but should refer to supplementary documentation at the end of this document for background on the underlying mechanisms employed.
+The purpose of this document is to present the technical design of the WashU GDG Delivery Robot Platform, which is an autonomous campus delivery system that matches customer food orders to autonomous ground robots and orchestrates each delivery end-to-end. \\\\
+This document is intended for a technical audience with background in distributed systems, backend services (Go), and web development (TypeScript/Next.js). Non-technical readers may find the high-level architecture overview in Section 5 useful.
 \newpage
 %----------------------------
 \section{Problem}
 
-[Describe the current state and limitations]
+At WashU, food delivery from on-campus establishments does not exist. The system currently relies on orderers picking up food, which may be a burden for students and staff. On a dense pedestrian campus such as Washington University in St. Louis, autonomous ground robots represent a practical alternative that can operate continuously.
 
 \subsection{The Core Problem}
 
-[Describe the specific problem your system addresses]
+The absence of an automated campus delivery system means students and staff must travel to pick up food themselves. This creates several pain points:
+\begin{itemize}
+  \item Inconvenience and lost time for orderers, especially during busy class schedules.
+  \item Establishments may be very crowded during peak hours, leading to a chaotic pickup experience.
+\end{itemize}
 
 \subsection{The Core Goal}
 
-The goal is to develop [describe your solution]:
+The goal is to develop a full-stack autonomous delivery platform that:
 \begin{itemize}
-    \item [Goal 1]
-    \item [Goal 2]
-    \item [Goal 3]
+  \item Accepts food orders from customers via a web application.
+  \item Continuously matches pending orders to available robots in real time using a priority-based matching engine.
+  \item Commands assigned robots to navigate from vendor pickup locations to customer drop-off points.
+  \item Tracks robot telemetry and exposes this data to operators and customers.
+  \item Persists order, robot, vendor, and user data in a cloud-hosted relational database.
 \end{itemize}
 \newpage
 %----------------------------
 \section{Tenets}
-TODO!
-List the key principles or beliefs guiding the design decisions.  
-Tenets help align teams and establish common ground on critical design questions.
+The following principles guide all design decisions for the platform:
+\begin{enumerate}
+  \item \textbf{Real-time responsiveness.} Matching, dispatching, and telemetry processing must happen with minimal latency so robots and customers always have an accurate picture of active deliveries.
+  \item \textbf{Reliability over throughput.} The system must degrade gracefully under load. An order should never be silently dropped; all failures must be logged and retried where possible.
+  \item \textbf{Clear separation of concerns.} The authoritative server owns all business logic (matching, dispatch, state). The web client and robots are thin consumers of its APIs, not decision-makers.
+  \item \textbf{Observable by default.} Every major operation emits structured logs and metrics so the team can diagnose issues without live debugging.
+  \item \textbf{Iterative delivery.} Ship a working end-to-end slice (single robot, single order) before adding scale. Complexity is introduced only when justified by a concrete requirement.
+\end{enumerate}
 \newpage
 %----------------------------
 \section{Requirements}
-TODO! Describe all requirements imposed by the problem.  
-Write from the end-user's perspective. Include user stories or use cases.
+The following requirements are derived from the delivery workflow and the operational needs of students, vendors, and robot operators on campus.
 
 \subsection*{Example Use Cases}
 \begin{itemize}
-  \item As a [user type], I want to [action].
-  \item As a [user type], I want [capability].
+  \item As a \textbf{customer}, I want to browse vendors and place a food order from the web app so that a robot delivers it to my residence hall.
+  \item As a \textbf{customer}, I want to track the real-time status of my delivery (assigned, en route, delivered) so that I know when to meet the robot and pick up my order.
+  \item As a \textbf{vendor}, I want to receive and confirm incoming orders so that I can prepare food before the robot arrives for pickup.
+  \item As a \textbf{robot}, I want to receive a dispatch command with the vendor pickup coordinates and customer drop-off coordinates so that I can begin navigation immediately after assignment.
 \end{itemize}
 %----------------------------
 \subsection{Out of Scope}
-TODO! List what is explicitly out of scope to avoid misunderstandings.
+The following items are explicitly out of scope for the current design:
+\begin{itemize}
+  \item Mobile client applications.
+  \item Payment processing and financial transaction management.
+  \item Multi-campus or off-campus deployments.
+\end{itemize}
 
 %----------------------------
 \subsection{Success Criteria}
-TODO! Describe how success will be measured once the solution is in production.  
-Include measurable metrics such as performance, scalability, or cost efficiency.
+The system will be considered successful when the following metrics are consistently achieved in a production environment:
 
 \subsection*{Example Metrics}
 \begin{itemize}
-  \item [Metric 1]
-  \item [Metric 2]
-  \item [Metric 3]
+  \item End-to-end order-to-robot assignment latency $\leq$ X seconds from the moment an idle robot and a pending order coexist in the system.
+  \item Robot telemetry updates are processed and reflected in the state manager within X\,ms of transmission.
+  \item The authoritative server handles at least X concurrent robot WebSocket/gRPC connections without degradation.
+  \item Web dashboard displays live robot positions refreshed at $\geq$ X\,Hz.
 \end{itemize}
 \newpage
 %----------------------------
 \section{Architecture}
-Describe the architecture of the proposed solution using text, diagrams, and bullet points.  
-Explain why this design was chosen.
+The platform is designed of three independently deployable sub-systems (Authoritative Server, Web Client, and Command Server). A shared Supabase (PostgreSQL) instance provides durable persistence, and an Apache Kafka cluster provides decoupled event streaming between services.
 
-\subsection{High-Level Overview (HLD)}
-List all logical system components:
+\subsection{High-Level Overview }
+Logical system components:
 \begin{itemize}
-  \item Component 1
-  \item Component 2
-  \item Component 3
-  \item Component 4
-  \item Component 5
+  \item \textbf{Web Client} (Next.js / TypeScript) --- Customer-facing application. Allows users to authenticate (? auth), browse campus vendors, place orders, and view live delivery status. Communicates with the Authoritative Server through gRPC and with ? directly for auth.
+  \item \textbf{Authoritative Server} (Go) --- Central orchestration service. Hosts the gRPC server (robot and order handlers), WebSockets, the order and robot matching engine, the state manager, Kafka producer/consumer, and the dispatch layer.
+  \item \textbf{Command Server} (Go) --- A simple TCP server that listens for dispatch commands from the Authoritative Server and relays them to robots over WebSockets. This decoupling allows the Authoritative Server to focus on business logic while the Command Server handles real-time communication with robots.
+  \item \textbf{Apache Kafka} --- Single-broker Kafka (with Zookeeper) deployed via Docker Compose. Topic \texttt{robot-update} carries robot status events for asynchronous fan-out to downstream consumers (e.g., analytics, robot manager service).
+  \item \textbf{Supabase / PostgreSQL} --- Cloud-hosted relational database. Stores \texttt{orders}, \texttt{order\_items}, \texttt{robots}, \texttt{users}, \texttt{vendors}, and \texttt{coordinates} tables. Also provides JWT-based authentication.
 \end{itemize}
 
-Include diagrams as needed:
-\begin{center}
-%\includegraphics[width=0.8\textwidth]{architecture-diagram.png}
-\end{center}
+\textbf{High-level data flow:}
+\begin{enumerate}
+  \item A customer places their order via web client, then the Authoritative Server persists the order and enqueues it in the matching engine heap.
+  \item Robot comes online, connecting with an idle status and is then enqueued in the matching engine robot queue.
+  \item On a one-second delay, the matching engine dequeues a pending order and an available robot and emits a match on the matches channel.
+  \item Dispatch layer consumes the match, writes the assignment to the database, and sends a dispatch command to the robot over its WebSocket connection.
+  \item Robot navigates to vendor pickup then to customer drop-off
+  \item Throughout navigation, robot streams position/battery/status updates; the State Manager is updated and Kafka publishes events for any interested consumers, which is then given to the web client to reflect the live status to the customer.
+\end{enumerate}
 
 \subsection{API Design}
-List all APIs used for interaction between users or services.  
-Include HTTP methods, payloads, versions, and example requests/responses.  
-Discuss future evolution of the APIs.
+%todo
 
 \subsection{Data Storage and Model}
-Describe the data model and database choice.  
-Estimate data volume, forecast growth, and justify scalability.  
-Discuss data pipelines, ingestion, and pre-processing if applicable.
+Supabase (managed PostgreSQL) is the sole persistent store. The Go authoritative server connects via the \texttt{postgrest-go} client, and the Next.js client uses the official \texttt{@supabase/supabase-js} SDK.
+
+%todo
+\textbf{Key tables:}
+\begin{itemize}
+  \item 
+\end{itemize}
 
 \subsection{Application / Component Level Design (LLD)}
-Provide detailed design of each system component, including data flow and control flow diagrams.
 
 \newpage
 %----------------------------
 \section{Dependencies}
-List external and internal dependencies.  
-Document assumptions and risks associated with these dependencies.
+\textbf{External dependencies:}
+\begin{itemize}
+  \item \textbf{Supabase} --- Managed PostgreSQL.
+  \item \textbf{Apache Kafka / Zookeeper}  --- Event streaming backbone.
+  \item \textbf{confluent-kafka-go v2} --- Go Kafka client.
+  \item \textbf{gorilla/websocket} --- WebSocket library for robot Hub connections.
+  \item \textbf{google.golang.org/grpc} --- gRPC runtime for robot and order service handlers.
+  \item \textbf{google/uuid} --- Client ID generation for WebSocket connections.
+  \item \textbf{Next.js / React} --- Web client framework.
+  \item \textbf{@supabase/supabase-js} --- Browser/server SDK for Supabase Auth and database queries.
+\end{itemize}
+
 %----------------------------
 \subsection{Design Alternatives Considered}
-Discuss alternative designs evaluated.  
-Provide a comparison table highlighting trade-offs.
-
-\begin{longtable}{@{}p{3cm}p{5cm}p{5cm}@{}}
-\toprule
-\textbf{Option} & \textbf{Pros} & \textbf{Cons} \\ \midrule
-Option A & [Advantages] & [Disadvantages] \\
-Option B & [Advantages] & [Disadvantages] \\ \bottomrule
-\end{longtable}
 
 \newpage
 %----------------------------
 \section{Cost Analysis}
-Estimate infrastructure and operational costs.  
-Plan for future growth and scalability.
+\textbf{Infrastructure (current development setup):}
+\begin{itemize}
+  \item \textbf{Supabase}
+  \item \textbf{VM} --- A single 8GB GCP VM is sufficient.
+  \item \textbf{Web Hosting}
+\end{itemize}
 
 \newpage
 %----------------------------
 \section{Failures and Risks}
-Discuss potential system failures such as:
-\begin{itemize}
-  \item Dependency failures
-  \item Traffic overflow
-  \item Performance degradation
-  \item Logic bugs
-\end{itemize}
-
-Identify risks such as external dependencies or resource limitations.  
-Include potential mitigation strategies.
 
 \newpage
 %----------------------------
 \section{Non-Functional Requirements}
-Cover scalability, availability, maintainability, reliability, latency, and security.
 
 \subsection{Scalability}
-Expected users, transactions, and data volume.
+The initial pilot targets a fleet of one robot and tens to hundreds of daily orders.
 
 \subsection{Latency and Availability}
-Define SLAs (e.g., P99, P50 latency targets).
 
 \subsection{Maintainability}
-Explain maintenance expectations and ownership.
 
 \subsection{Security}
-Describe security measures and required compliance levels.
+\begin{itemize}
+  \item Customer authentication is handled by ? Auth (JWT).
+\end{itemize}
 
 \newpage
 %----------------------------
 \section{Testing and Observability}
-Outline strategies for testing, monitoring, and alerting.
 
 \subsection{Testing}
-Explain testing approach: unit, integration, A/B, or stress tests.
 
 \subsection{Metrics and Alarms}
-List key performance metrics, dashboards, and alert configurations.
 
 \newpage
 %----------------------------
 \section{Future Improvements}
-List planned features or improvements for future releases.
 
 \newpage
 %----------------------------
 \section{FAQs}
-Include frequently asked questions and their answers.
-
-[Question?]
-[Answer here]
 
 \newpage
 %----------------------------
 \appendix
-\section{Appendix A: Subtitle (Optional)}
-Include detailed technical analysis or supporting data.
+\section{Appendix A: Robot FSM}
+The diagram below describes all valid robot state transitions as defined in \texttt{state/model.go} and \texttt{proto/robot.proto}.
+
+\begin{itemize}
+  \item \texttt{UNKNOWN} $\rightarrow$ \texttt{IDLE} (first telemetry received)
+  \item \texttt{IDLE} $\rightarrow$ \texttt{ASSIGNED} (dispatch command sent by matching engine)
+  \item \texttt{ASSIGNED} $\rightarrow$ \texttt{MOVING\_TO\_PICKUP} (robot begins navigation)
+  \item \texttt{MOVING\_TO\_PICKUP} $\rightarrow$ \texttt{AT\_PICKUP} (robot arrives at vendor)
+  \item \texttt{AT\_PICKUP} $\rightarrow$ \texttt{MOVING\_TO\_DROPOFF} (food loaded; en route to customer)
+  \item \texttt{MOVING\_TO\_DROPOFF} $\rightarrow$ \texttt{AT\_DROPOFF} (robot arrives at customer location)
+  \item \texttt{AT\_DROPOFF} $\rightarrow$ \texttt{RETURNING} (delivery complete; returning to base)
+  \item \texttt{RETURNING} $\rightarrow$ \texttt{IDLE} (robot back at base, ready for next order)
+  \item Any state $\rightarrow$ \texttt{CHARGING} (battery low threshold reached)
+  \item \texttt{CHARGING} $\rightarrow$ \texttt{IDLE} (battery sufficiently recharged)
+  \item Any state $\rightarrow$ \texttt{OFFLINE} / \texttt{ERROR} / \texttt{MAINTENANCE} (fault conditions)
+\end{itemize}
 
 \newpage
 %----------------------------
 \section{Glossary}
-\begin{description}
-  \item[Term 1] Definition
-  \item[Term 2] Definition
-\end{description}
 
 \newpage
 %----------------------------
 \section{References}
 \begin{itemize}
-  \item [Reference 1]: \url{https://example.com}
-  \item [Reference 2]: \url{https://example.com}
+  \item GitHub Repository: \url{https://github.com/WUSTL-Delivery/delivery-gdg-platform}
+  \item gRPC Documentation: \url{https://grpc.io/docs/}
+  \item Protocol Buffers Language Guide: \url{https://protobuf.dev/programming-guides/proto3/}
+  \item Apache Kafka Documentation: \url{https://kafka.apache.org/documentation/}
+  \item confluent-kafka-go: \url{https://github.com/confluentinc/confluent-kafka-go}
+  \item gorilla/websocket: \url{https://github.com/gorilla/websocket}
+  \item Supabase Documentation: \url{https://supabase.com/docs}
+  \item Next.js Documentation: \url{https://nextjs.org/docs}
+  \item Prometheus Go Client: \url{https://github.com/prometheus/client_golang}
 \end{itemize}
 
 \end{document}
