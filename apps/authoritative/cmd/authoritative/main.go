@@ -2,13 +2,9 @@ package main
 
 // Entry point for author server
 import (
-	"context"
-	"encoding/json"
-	"fmt"
 	"log"
 	"net"
 	"os"
-	"strconv"
 
 	"github.com/WUSTL-Delivery/delivery-gdg-platform/main/apps/authoritative/internal/matcher"
 	"github.com/WUSTL-Delivery/delivery-gdg-platform/main/apps/authoritative/internal/wsockets/robotmanager"
@@ -27,6 +23,7 @@ type server struct {
 	db  *db.Database
 }
 
+/*
 func (s *server) InsertOrder(ctx context.Context, req *pb.InsertOrderRequest) (*pb.InsertOrderResponse, error) {
 	fmt.Println("InsertOrder called")
 	order := req.GetOrder()
@@ -112,34 +109,7 @@ func (s *server) InsertOrder(ctx context.Context, req *pb.InsertOrderRequest) (*
 	}, nil
 }
 
-func (s *server) DeleteOrder(ctx context.Context, req *pb.DeleteOrderRequest) (*pb.DeleteOrderResponse, error) {
-	order := req.GetOrder()
-	orderId := order.GetOrderId()
-
-	// Delete order items first due to foreign key constraints
-	_, _, err := s.sb.
-		From("orderItems").
-		Delete("", "").
-		Eq("orderId", strconv.Itoa(int(orderId))).
-		Execute()
-	if err != nil {
-		return nil, fmt.Errorf("failed deleting order items: %v", err)
-	}
-
-	// Delete the order
-	_, _, err = s.sb.
-		From("orders").
-		Delete("", "").
-		Eq("id", strconv.Itoa(int(orderId))).
-		Execute()
-	if err != nil {
-		return nil, fmt.Errorf("failed deleting order: %v", err)
-	}
-
-	return &pb.DeleteOrderResponse{
-		ReturnMsg: "SUCCESS",
-	}, nil
-}
+*/
 
 func main() {
 	godotenv.Load(".env")
@@ -161,11 +131,7 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	// --- TESTING DATABASE FUNCTIONS---
 	database := db.New()
-
-	// --- END TEST ---
-
 	orm := matcher.CreateOrderRobotMatcher()
 	match := orm.StartORM()
 
