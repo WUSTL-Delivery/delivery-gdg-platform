@@ -49,6 +49,11 @@ go.sum
 # Coverage
 coverage.out
 
+# Documentation with LateX
+docs/*
+!docs/*.tex
+!docs/*.pdf
+
 # ---- General ----
 # OS-specific
 Thumbs.db

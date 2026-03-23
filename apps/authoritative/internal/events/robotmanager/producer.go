@@ -1,8 +1,8 @@
 package robotmanager
 
 import (
+	"github.com/WUSTL-Delivery/delivery-gdg-platform/main/apps/authoritative/internal/events"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
-	"github.com/jaximus808/delivery-gdg-platform/main/apps/authoritative/internal/events"
 )
 
 var robotManager string = "robot-manager"

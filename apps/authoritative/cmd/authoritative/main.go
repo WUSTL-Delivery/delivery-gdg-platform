@@ -2,29 +2,28 @@ package main
 
 // Entry point for author server
 import (
-	"context"
-	"encoding/json"
-	"fmt"
 	"log"
 	"net"
 	"os"
-	"strconv"
 
-	"github.com/jaximus808/delivery-gdg-platform/main/apps/authoritative/internal/matcher"
-	"github.com/jaximus808/delivery-gdg-platform/main/apps/authoritative/internal/wsockets/robotmanager"
+	"github.com/WUSTL-Delivery/delivery-gdg-platform/main/apps/authoritative/internal/matcher"
+	"github.com/WUSTL-Delivery/delivery-gdg-platform/main/apps/authoritative/internal/wsockets/robotmanager"
+	db "github.com/WUSTL-Delivery/delivery-gdg-platform/main/apps/authoritative/pkg"
 	"github.com/joho/godotenv"
-	"github.com/supabase-community/supabase-go"
+	supabase "github.com/supabase-community/supabase-go"
 	"google.golang.org/grpc"
 
-	pb "github.com/jaximus808/delivery-gdg-platform/main/apps/authoritative/proto"
+	pb "github.com/WUSTL-Delivery/delivery-gdg-platform/main/apps/authoritative/proto"
 )
 
 type server struct {
 	pb.UnimplementedOrderHandlerServer
 	sb  *supabase.Client
 	orm *matcher.OrderRobotMatcher
+	db  *db.Database
 }
 
+/*
 func (s *server) InsertOrder(ctx context.Context, req *pb.InsertOrderRequest) (*pb.InsertOrderResponse, error) {
 	fmt.Println("InsertOrder called")
 	order := req.GetOrder()
@@ -109,37 +108,11 @@ func (s *server) InsertOrder(ctx context.Context, req *pb.InsertOrderRequest) (*
 		ReturnMsg: "SUCCESS",
 	}, nil
 }
-func (s *server) DeleteOrder(ctx context.Context, req *pb.DeleteOrderRequest) (*pb.DeleteOrderResponse, error) {
-	order := req.GetOrder()
-	orderId := order.GetOrderId()
 
-	// Delete order items first due to foreign key constraints
-	_, _, err := s.sb.
-		From("orderItems").
-		Delete("", "").
-		Eq("orderId", strconv.Itoa(int(orderId))).
-		Execute()
-	if err != nil {
-		return nil, fmt.Errorf("failed deleting order items: %v", err)
-	}
-
-	// Delete the order
-	_, _, err = s.sb.
-		From("orders").
-		Delete("", "").
-		Eq("id", strconv.Itoa(int(orderId))).
-		Execute()
-	if err != nil {
-		return nil, fmt.Errorf("failed deleting order: %v", err)
-	}
-
-	return &pb.DeleteOrderResponse{
-		ReturnMsg: "SUCCESS",
-	}, nil
-}
+*/
 
 func main() {
-	godotenv.Load("../../.env")
+	godotenv.Load(".env")
 
 	SUPABASE_URL := os.Getenv("SUPABASE_URL")
 	SUPABASE_KEY := os.Getenv("SUPABASE_KEY")
@@ -157,19 +130,21 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
+
+	database := db.New()
 	orm := matcher.CreateOrderRobotMatcher()
 	match := orm.StartORM()
 
 	log.Println("starting robot manager...")
 	go robotmanager.StartRobotManager(orm, match)
-
 	log.Println("robot manager started!")
+
 	grpc_server := grpc.NewServer()
 	pb.RegisterOrderHandlerServer(grpc_server, &server{
 		sb:  client,
 		orm: orm,
+		db:  database,
 	})
-
 	log.Println("gRPC server listening on :50051")
 
 	if err := grpc_server.Serve(lis); err != nil {
