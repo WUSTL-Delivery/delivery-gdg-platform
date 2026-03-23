@@ -25,6 +25,7 @@ type AuthService struct {
 }
 
 func NewAuthService(supabaseURL, supabaseAnonKey string) (*AuthService, error) {
+	// Creates a new AuthService instance
 	if strings.TrimSpace(supabaseURL) == "" {
 		return nil, fmt.Errorf("supabase URL is required")
 	}
@@ -45,6 +46,8 @@ func NewAuthService(supabaseURL, supabaseAnonKey string) (*AuthService, error) {
 }
 
 func buildAuthBaseURL(supabaseURL string) (string, error) {
+	// Translates a Supabase URL into the corresponding GoTrue auth endpoint.
+	// For example, https://xyzcompany.supabase.co becomes https://xyzcompany.supabase.co/auth/v1
 	u, err := url.Parse(strings.TrimSpace(supabaseURL))
 	if err != nil {
 		return "", fmt.Errorf("invalid supabase URL: %w", err)
@@ -64,6 +67,7 @@ func buildAuthBaseURL(supabaseURL string) (string, error) {
 }
 
 func (s *AuthService) Signup(email, password string, metadata map[string]interface{}) (*authtypes.SignupResponse, error) {
+	// Signs up a new user with email and password, along with optional metadata.
 	req := authtypes.SignupRequest{
 		Email:    strings.TrimSpace(email),
 		Password: password,
@@ -73,14 +77,17 @@ func (s *AuthService) Signup(email, password string, metadata map[string]interfa
 }
 
 func (s *AuthService) SignInWithPassword(email, password string) (*authtypes.TokenResponse, error) {
+	// Signs in a user with email and password.
 	return s.client.SignInWithEmailPassword(strings.TrimSpace(email), password)
 }
 
 func (s *AuthService) Refresh(refreshToken string) (*authtypes.TokenResponse, error) {
+	// Refreshes an access token using a refresh token.
 	return s.client.RefreshToken(strings.TrimSpace(refreshToken))
 }
 
 func (s *AuthService) ValidateAccessToken(accessToken string) (*authtypes.UserResponse, error) {
+	// Validates an access token and returns the associated user profile.
 	return s.client.WithToken(strings.TrimSpace(accessToken)).GetUser()
 }
 
@@ -89,10 +96,12 @@ type AuthHTTPServer struct {
 }
 
 func NewAuthHTTPServer(authService *AuthService) *AuthHTTPServer {
+	// Creates a new AuthHTTPServer instance with the provided AuthService.
 	return &AuthHTTPServer{auth: authService}
 }
 
 func (s *AuthHTTPServer) RegisterRoutes(mux *http.ServeMux) {
+	// Registers HTTP handlers for auth-related routes.
 	mux.HandleFunc("POST /auth/signup", s.handleSignup)
 	mux.HandleFunc("POST /auth/login", s.handleLogin)
 	mux.HandleFunc("POST /auth/refresh", s.handleRefresh)
@@ -109,6 +118,7 @@ type refreshRequest struct {
 }
 
 func (s *AuthHTTPServer) handleSignup(w http.ResponseWriter, r *http.Request) {
+	// Handles user signup requests. Expects JSON body with email and password.
 	var req credentialRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSONError(w, http.StatusBadRequest, "invalid JSON body")
@@ -132,6 +142,7 @@ func (s *AuthHTTPServer) handleSignup(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *AuthHTTPServer) handleLogin(w http.ResponseWriter, r *http.Request) {
+	// Handles user login requests. Expects JSON body with email and password. Returns access and refresh tokens.
 	var req credentialRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSONError(w, http.StatusBadRequest, "invalid JSON body")
@@ -155,6 +166,7 @@ func (s *AuthHTTPServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *AuthHTTPServer) handleRefresh(w http.ResponseWriter, r *http.Request) {
+	// Handles token refresh requests. Expects JSON body with refresh_token. Returns new access and refresh tokens.
 	var req refreshRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSONError(w, http.StatusBadRequest, "invalid JSON body")
@@ -176,6 +188,7 @@ func (s *AuthHTTPServer) handleRefresh(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *AuthHTTPServer) handleMe(w http.ResponseWriter, r *http.Request) {
+	// Handles requests to fetch the current user's profile. Expects Authorization header with Bearer token.
 	authz := strings.TrimSpace(r.Header.Get("Authorization"))
 	if !strings.HasPrefix(authz, "Bearer ") {
 		writeJSONError(w, http.StatusUnauthorized, "missing Bearer token")
@@ -197,6 +210,7 @@ func (s *AuthHTTPServer) handleMe(w http.ResponseWriter, r *http.Request) {
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload interface{}) {
+	// Writes a JSON response with the given status code and payload.
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(payload); err != nil {
@@ -205,6 +219,7 @@ func writeJSON(w http.ResponseWriter, status int, payload interface{}) {
 }
 
 func writeJSONError(w http.ResponseWriter, status int, message string) {
+	// Writes a JSON error response with the given status code and error message.
 	writeJSON(w, status, map[string]string{"error": message})
 }
 
