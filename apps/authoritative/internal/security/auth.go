@@ -108,6 +108,7 @@ func (s *AuthHTTPServer) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/me", s.handleMe)
 }
 
+// Below are the HTTP handler implementations for each auth route. They parse incoming JSON requests, call the corresponding AuthService methods, and write JSON responses with appropriate status codes.
 type credentialRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -129,7 +130,8 @@ func (s *AuthHTTPServer) handleSignup(w http.ResponseWriter, r *http.Request) {
 		"role": "customer",
 	})
 	if err != nil {
-		writeJSONError(w, http.StatusUnauthorized, err.Error())
+		slog.Error(err.Error())
+		writeJSONError(w, http.StatusUnauthorized, "Error: could not complete signup")
 		return
 	}
 
@@ -189,13 +191,11 @@ func (s *AuthHTTPServer) handleRefresh(w http.ResponseWriter, r *http.Request) {
 
 func (s *AuthHTTPServer) handleMe(w http.ResponseWriter, r *http.Request) {
 	// Handles requests to fetch the current user's profile. Expects Authorization header with Bearer token.
-	authz := strings.TrimSpace(r.Header.Get("Authorization"))
-	if !strings.HasPrefix(authz, "Bearer ") {
-		writeJSONError(w, http.StatusUnauthorized, "missing Bearer token")
+	accessToken, err := getAccessTokenFromHeader(r)
+	if err != nil {
+		writeJSONError(w, http.StatusUnauthorized, "missing or invalid Authorization header")
 		return
 	}
-
-	accessToken := strings.TrimSpace(strings.TrimPrefix(authz, "Bearer "))
 	user, err := s.auth.ValidateAccessToken(accessToken)
 	if err != nil {
 		writeJSONError(w, http.StatusUnauthorized, "invalid or expired access token")
@@ -207,6 +207,15 @@ func (s *AuthHTTPServer) handleMe(w http.ResponseWriter, r *http.Request) {
 		"email": user.Email,
 		"role":  user.Role,
 	})
+}
+
+func getAccessTokenFromHeader(r *http.Request) (string, error) {
+	// Extracts the access token from the Authorization header. Expects format "Bearer <token>".
+	authz := strings.TrimSpace(r.Header.Get("Authorization"))
+	if !strings.HasPrefix(authz, "Bearer ") {
+		return "", fmt.Errorf("missing Bearer token")
+	}
+	return strings.TrimSpace(strings.TrimPrefix(authz, "Bearer ")), nil
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload interface{}) {
