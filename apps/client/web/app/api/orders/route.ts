@@ -1,34 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { jwtVerify } from 'jose';
 import { getOrderClient } from '@/lib/grpc-client';
 import { promisify } from 'util';
+import supabase from '@/components/supabase';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'your-secret-key-change-this'
-);
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
+
 export async function POST(request: NextRequest) {
   try {
     // Get user from JWT token
     const token = request.cookies.get('auth-token')?.value;
-    let userId = null;
+    
+    if (!token) {
+      return NextResponse.json(
+        { message: 'Unauthorized: No token provided' },
+        { status: 401 }
+      );
+    }
 
-    if (token) {
-      try {
-        const { payload } = await jwtVerify(token, JWT_SECRET);
-        userId = payload.userId as string;
-      } catch (error) {
-        console.error('JWT verification failed:', error);
+    let userId: string;
+    try {
+      const { payload } = await jwtVerify(token, JWT_SECRET);
+      userId = payload.userId as string;
+      
+      if (!userId) {
+        return NextResponse.json(
+          { message: 'Unauthorized: Invalid token payload' },
+          { status: 401 }
+        );
       }
+    } catch (error) {
+      console.error('JWT verification failed:', error);
+      return NextResponse.json(
+        { message: 'Unauthorized: Invalid or expired token' },
+        { status: 401 }
+      );
     }
 
     const orderData = await request.json();
     console.log('Received order data:', orderData);
+
     // Validate required fields
     if (!orderData.vendor_id || !orderData.items || orderData.items.length === 0) {
       return NextResponse.json(
@@ -48,7 +60,7 @@ export async function POST(request: NextRequest) {
     const { data: locationData, error: locationError } = await supabase
       .from('coordinates')
       .select('*')
-      .eq('name', orderData.dropoff_loc_id.toLowerCase())
+      .eq('name', orderData.dropoff_loc_id)
       .single();
 
     if (locationError || !locationData) {
@@ -63,7 +75,7 @@ export async function POST(request: NextRequest) {
     const { data: vendorData, error: vendorError } = await supabase
       .from('vendors')
       .select('*')
-      .eq('name', orderData.vendor_id.toLowerCase())
+      .eq('name', orderData.vendor_id)
       .single();
 
     if (vendorError || !vendorData) {
@@ -73,9 +85,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    // Get actual user_id from JWT token or use placeholder
-    const finalUserId = userId || "guest-user";
 
     // Prepare order items for protobuf format
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -89,7 +98,7 @@ export async function POST(request: NextRequest) {
     // Create the gRPC order object matching your protobuf structure
     const grpcOrder = {
       order_id: 0, // Will be assigned by the gRPC server
-      user_id: finalUserId,
+      user_id: userId,
       vendor_id: vendorData.id, // Use the vendor_id from the vendors table
       items: protoItems,
       status: 'pending',

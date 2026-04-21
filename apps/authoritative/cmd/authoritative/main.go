@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 
+	mygrpc "github.com/WUSTL-Delivery/delivery-gdg-platform/main/apps/authoritative/internal/grpc"
 	"github.com/WUSTL-Delivery/delivery-gdg-platform/main/apps/authoritative/internal/matcher"
 	"github.com/WUSTL-Delivery/delivery-gdg-platform/main/apps/authoritative/internal/wsockets/robotmanager"
 	db "github.com/WUSTL-Delivery/delivery-gdg-platform/main/apps/authoritative/pkg"
@@ -117,7 +118,7 @@ func main() {
 	SUPABASE_URL := os.Getenv("SUPABASE_URL")
 	SUPABASE_KEY := os.Getenv("SUPABASE_KEY")
 
-	client, err := supabase.NewClient(
+	_, err := supabase.NewClient(
 		SUPABASE_URL,
 		SUPABASE_KEY,
 		nil,
@@ -140,11 +141,7 @@ func main() {
 	log.Println("robot manager started!")
 
 	grpc_server := grpc.NewServer()
-	pb.RegisterOrderHandlerServer(grpc_server, &server{
-		sb:  client,
-		orm: orm,
-		db:  database,
-	})
+	pb.RegisterOrderHandlerServer(grpc_server, mygrpc.NewOrderHandler(database, orm))
 	log.Println("gRPC server listening on :50051")
 
 	if err := grpc_server.Serve(lis); err != nil {

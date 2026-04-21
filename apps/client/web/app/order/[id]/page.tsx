@@ -14,6 +14,7 @@ interface OrderDetails {
   id: number;
   userId: string;
   vendorId: string;
+  vendorName: string;
   items: OrderItem[];
   status: string;
   created_at: string;
@@ -182,7 +183,7 @@ export default function OrderTrackingPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Vendor</p>
-                <p className="font-semibold text-gray-900 capitalize">{order.vendorId}</p>
+                <p className="font-semibold text-gray-900 capitalize">{order.vendorName}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Placed At</p>

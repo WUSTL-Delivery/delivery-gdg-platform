@@ -64,6 +64,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate JWT token
+
+    
     const token = jwt.sign(
       { 
         userId: newUser.id, 
@@ -73,6 +75,7 @@ export async function POST(request: NextRequest) {
       JWT_SECRET,
       { expiresIn: '7d' }
     );
+    
 
     // Create response
     const response = NextResponse.json(
