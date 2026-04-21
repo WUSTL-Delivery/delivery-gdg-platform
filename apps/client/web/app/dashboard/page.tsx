@@ -9,13 +9,13 @@ export default function Dashboard() {
       name: "Subway",
       time: "10 min",
       image: "/SubWay.avif",
-      slug: "subway"
+      slug: "Subway"
     },
     {
       name: "BeastCraft",
       time: "20 min",
       image: "/BeastCraft.jpg",
-      slug: "beastcraft"
+      slug: "Beastcraft"
     },
     {
       name: "Fattened Caf",

@@ -48,6 +48,19 @@ export async function GET(
       dropoffCoordinates = locationData;
     }
 
+    //find vendor name
+    const { data: vendorData } = await supabase
+      .from('vendors')
+      .select('name')
+      .eq('id', order.vendorId)
+      .single();
+
+     if (vendorData) {
+      order.vendorName = vendorData.name;
+    } else {
+      order.vendorName = 'Unknown Vendor';
+    }
+
     // Combine order with items
     const fullOrder = {
       ...order,

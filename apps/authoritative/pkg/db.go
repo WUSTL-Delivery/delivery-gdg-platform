@@ -171,7 +171,7 @@ func (db *Database) DeleteCoordinate(ctx context.Context, id string) error {
 //
 // @param o: order with info from client
 // @return error
-func (db *Database) CreateOrder(ctx context.Context, o Order) error {
+func (db *Database) CreateOrder(ctx context.Context, o *Order) error {
 	data := map[string]interface{}{
 		"userId":          o.UserID,
 		"vendorId":        o.VendorID,
@@ -198,6 +198,7 @@ func (db *Database) CreateOrder(ctx context.Context, o Order) error {
 	}
 
 	orderID := insertedOrders[0].ID
+	o.ID = orderID
 
 	// Insert all items associated with the order
 	for _, item := range o.OrderItems {

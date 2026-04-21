@@ -5,7 +5,9 @@ import (
 	"log"
 	"net"
 
+	"github.com/WUSTL-Delivery/delivery-gdg-platform/main/apps/authoritative/internal/matcher"
 	"github.com/WUSTL-Delivery/delivery-gdg-platform/main/apps/authoritative/internal/state"
+	db "github.com/WUSTL-Delivery/delivery-gdg-platform/main/apps/authoritative/pkg"
 	pb "github.com/WUSTL-Delivery/delivery-gdg-platform/main/apps/authoritative/proto"
 	"google.golang.org/grpc"
 )
@@ -16,24 +18,29 @@ import (
 type Server struct {
 	grpcServer   *grpc.Server
 	robotHandler *RobotHandler
+	orderHandler *OrderHandler
 	stateManager *state.Manager
+	db           *db.Database
 	port         int
 }
 
-// NewServer creates a new gRPC server
-func NewServer(port int, stateManager *state.Manager) *Server {
+func NewServer(port int, stateManager *state.Manager, database *db.Database, orm *matcher.OrderRobotMatcher) *Server {
 	grpcServer := grpc.NewServer()
 
 	// Create handlers
 	robotHandler := NewRobotHandler(stateManager)
+	orderHandler := NewOrderHandler(database, orm)
 
 	// Register services
 	pb.RegisterRobotServiceServer(grpcServer, robotHandler)
+	pb.RegisterOrderHandlerServer(grpcServer, orderHandler)
 
 	return &Server{
 		grpcServer:   grpcServer,
 		robotHandler: robotHandler,
+		orderHandler: orderHandler,
 		stateManager: stateManager,
+		db:           database,
 		port:         port,
 	}
 }
