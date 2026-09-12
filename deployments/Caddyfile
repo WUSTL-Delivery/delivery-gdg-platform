@@ -16,3 +16,13 @@ www.{$DOMAIN_NAME} {
 	# talks to the authoritative gRPC service over the internal compose network.
 	reverse_proxy web:3000
 }
+
+# Fleet platform: robots and club services connect here over WSS. Plain
+# reverse_proxy is enough — Caddy upgrades WebSocket connections transparently.
+fleet.{$DOMAIN_NAME} {
+	log {
+		output stdout
+		format json
+	}
+	reverse_proxy fleet-server:8080
+}
