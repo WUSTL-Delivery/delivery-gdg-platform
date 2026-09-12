@@ -7,6 +7,9 @@
 #   • Kafka / kafka-ui / gRPC lose their host port bindings — only Caddy (80/443),
 #     the robot WebSocket (8080), and the command TCP/UDP relays stay reachable
 #     from outside, because robots connect to those directly.
+#   • fleet-server loses its host port too: Caddy terminates TLS for
+#     fleet.DOMAIN_NAME and proxies to it, so robots and services dial
+#     wss://fleet.<domain>/ws. No new firewall rule needed.
 services:
   kafka:
     ports: !reset []
@@ -19,6 +22,9 @@ services:
       - "8080:8080"
 
   web:
+    ports: !reset []
+
+  fleet-server:
     ports: !reset []
 
   caddy:
@@ -36,6 +42,7 @@ services:
       - caddy_config:/config
     depends_on:
       - web
+      - fleet-server
 
 volumes:
   caddy_data:

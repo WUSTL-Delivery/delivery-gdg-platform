@@ -93,6 +93,59 @@ services:
       - "8082:8080/tcp"  # TCP relay (8080 on host is the authoritative ws)
       - "8081:8081/udp"  # UDP relay
 
+  # ── Fleet platform (robot connectivity, presence, intervention queue) ──────
+  # fleet-server is consumed as a PREBUILT IMAGE from the fleet-platform repo
+  # (image coupling): the tag below is the club's pin. Bump it deliberately in a
+  # reviewed commit; see deployments/README.md "Fleet platform".
+  fleet-server:
+    image: ${FLEET_SERVER_IMAGE:-ghcr.io/jaximus808/fleet-server:0.1.0}
+    container_name: fleet-server
+    restart: unless-stopped
+    ports:
+      # 8090 on the host: 8080 is the legacy authoritative hub. In prod this
+      # binding is removed and Caddy serves wss://fleet.<domain>/ws instead.
+      - "8090:8080"
+    environment:
+      FLEET_LISTEN: ":8080"
+      FLEET_DB: /var/lib/fleet/fleet.db
+      FLEET_HEARTBEAT_INTERVAL_MS: "10000"
+      FLEET_LEASE_TTL_MS: "15000"
+      FLEET_SWEEP_MS: "1000"
+      # Declarative bootstrap: on every start, make sure club-fleet exists and
+      # that FLEET_ENROLL_KEY is registered for it (idempotent). The bridge and
+      # the robots enroll with that same value, so nothing is minted on the box.
+      FLEET_BOOTSTRAP_FLEET: club-fleet
+      FLEET_BOOTSTRAP_ENROLL_KEY: ${FLEET_ENROLL_KEY:?set FLEET_ENROLL_KEY in deployments/.env (openssl rand -hex 24)}
+    volumes:
+      - fleet-data:/var/lib/fleet          # sqlite: fleets, clients, tokens
+    healthcheck:
+      test: ["CMD", "fleet-server", "-healthcheck"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  # Platform -> Kafka forwarder (apps/fleet-bridge). Enrolls once with
+  # FLEET_ENROLL_KEY (the key fleet-server seeded above) and keeps its
+  # per-service token on its volume.
+  fleet-bridge:
+    build:
+      context: ../apps/fleet-bridge
+    image: delivery-fleet-bridge:latest
+    container_name: fleet-bridge
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+      fleet-server:
+        condition: service_healthy
+    environment:
+      FLEET_URL: ws://fleet-server:8080/ws
+      FLEET_ENROLL_KEY: ${FLEET_ENROLL_KEY:?set FLEET_ENROLL_KEY in deployments/.env}
+      KAFKA_BROKERS: kafka:9093
+    volumes:
+      - fleet-bridge-data:/var/lib/fleet-bridge
+
   web:
     build:
       context: ../apps/client/web
@@ -119,3 +172,5 @@ services:
 
 volumes:
   kafka-data:
+  fleet-data:
+  fleet-bridge-data:

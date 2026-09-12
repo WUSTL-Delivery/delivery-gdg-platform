@@ -32,7 +32,8 @@ cp deployments/.env.example deployments/.env
 | Web client      | http://localhost:3000           |
 | Kafka UI        | http://localhost:8085           |
 | gRPC (authoritative) | localhost:50051            |
-| Robot WebSocket | ws://localhost:8080/ws          |
+| Robot WebSocket (legacy hub) | ws://localhost:8080/ws |
+| Fleet platform WebSocket | ws://localhost:8090/ws    |
 | Command TCP / UDP | localhost:8082 / localhost:8081 |
 | Kafka (host)    | localhost:9092                  |
 
@@ -44,5 +45,14 @@ cd apps/authoritative && go run ./cmd/authoritative   # reads .env, uses localho
 cd apps/command && go run . -mode=server
 cd apps/client/web && npm install && npm run dev
 ```
+
+## Fleet platform
+
+Robot connectivity, presence, and the operator intervention queue come from
+[fleet-platform](https://github.com/jaximus808/robo-fleet-platform), consumed as a
+prebuilt `fleet-server` image pinned in `deployments/docker-compose.yml`.
+`apps/fleet-bridge` is the club's first client on it: it forwards platform events to
+Kafka so existing consumers keep working. Integration guide:
+`fleet-platform/docs/INTEGRATION.md`. Operating it here: `deployments/README.md`.
 
 See `deployments/README.md` for the full port table and the production/GCP deploy flow.
