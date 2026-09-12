@@ -74,5 +74,5 @@ survive deploys, which wipe only the checkout.
 and services dial `wss://fleet.<domain>/ws`. Exactly one `fleet-server` replica: it is
 stateful (presence and leases live in memory). Recovery is restart.
 
-**If the GHCR package is private**, set the `GHCR_READ_TOKEN` secret so the deploy logs the
-VM in before pulling; otherwise make the package public in the fleet-platform repo settings.
+The fleet-server package on GHCR is public, so the VM pulls it anonymously. If it is ever
+made private, run a one-time `docker login ghcr.io` on the VM with a `read:packages` token.
