@@ -7,11 +7,11 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/joho/godotenv v1.5.1
+	github.com/supabase-community/auth-go v1.5.0
 	github.com/supabase-community/postgrest-go v0.0.12
 	github.com/supabase-community/supabase-go v0.0.4
 	google.golang.org/grpc v1.79.1
 	google.golang.org/protobuf v1.36.10
-
 )
 
 require (
