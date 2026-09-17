@@ -35,36 +35,41 @@ export default function OrderTrackingPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  // Fetch order details
-  const fetchOrderDetails = async () => {
-    try {
-      const response = await fetch(`/api/orders/${orderId}`)
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to fetch order details')
-      }
-
-      setOrder(data.order)
-      setError('')
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message)
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Poll for order updates every 5 seconds
+  // Fetch once, then poll every 5 seconds. The fetch lives inside the effect
+  // so React's set-state-in-effect rule can see the updates happen after an
+  // await, and the `cancelled` flag stops a late response from touching state
+  // after the order id changes or the page unmounts.
   useEffect(() => {
-    fetchOrderDetails() // Initial fetch
+    let cancelled = false
 
-    const interval = setInterval(() => {
-      fetchOrderDetails()
-    }, 5000) // Poll every 5 seconds
+    const fetchOrderDetails = async () => {
+      try {
+        const response = await fetch(`/api/orders/${orderId}`)
+        const data = await response.json()
 
-    return () => clearInterval(interval) // Cleanup on unmount
+        if (!response.ok) {
+          throw new Error(data.message || 'Failed to fetch order details')
+        }
+        if (cancelled) return
+
+        setOrder(data.order)
+        setError('')
+      } catch (err: unknown) {
+        if (!cancelled && err instanceof Error) {
+          setError(err.message)
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    fetchOrderDetails()
+    const interval = setInterval(fetchOrderDetails, 5000)
+
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
   }, [orderId])
 
   // Calculate total

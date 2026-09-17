@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -24,13 +25,13 @@ type AuthService struct {
 	client auth.Client
 }
 
-func NewAuthService(supabaseURL, supabaseAnonKey string) (*AuthService, error) {
+func NewAuthService(supabaseURL, supabasePublishableKey string) (*AuthService, error) {
 	// Creates a new AuthService instance
 	if strings.TrimSpace(supabaseURL) == "" {
 		return nil, fmt.Errorf("supabase URL is required")
 	}
-	if strings.TrimSpace(supabaseAnonKey) == "" {
-		return nil, fmt.Errorf("supabase anon key is required")
+	if strings.TrimSpace(supabasePublishableKey) == "" {
+		return nil, fmt.Errorf("supabase publishable key is required")
 	}
 
 	authBaseURL, err := buildAuthBaseURL(supabaseURL)
@@ -40,7 +41,7 @@ func NewAuthService(supabaseURL, supabaseAnonKey string) (*AuthService, error) {
 
 	// auth.New requires a project reference, but for reliability we override
 	// the auth URL directly for local/prod compatibility.
-	client := auth.New("placeholder", supabaseAnonKey).WithCustomAuthURL(authBaseURL)
+	client := auth.New("placeholder", supabasePublishableKey).WithCustomAuthURL(authBaseURL)
 
 	return &AuthService{client: client}, nil
 }
@@ -236,15 +237,15 @@ func writeJSONError(w http.ResponseWriter, status int, message string) {
 //
 // Required environment variables:
 // - SUPABASE_URL (example: https://<project-ref>.supabase.co)
-// - SUPABASE_ANON_KEY
+// - SUPABASE_PUBLISHABLE_KEY
 //
 // Optional:
 // - AUTH_SERVER_ADDR (default :8081)
 func ExampleProgram() error {
 	supabaseURL := os.Getenv("SUPABASE_URL")
-	anonKey := os.Getenv("SUPABASE_ANON_KEY")
+	publishableKey := os.Getenv("SUPABASE_PUBLISHABLE_KEY")
 
-	authService, err := NewAuthService(supabaseURL, anonKey)
+	authService, err := NewAuthService(supabaseURL, publishableKey)
 	if err != nil {
 		return err
 	}

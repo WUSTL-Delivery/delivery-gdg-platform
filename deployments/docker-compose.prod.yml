@@ -1,0 +1,49 @@
+# Production overlay — applied ON TOP of docker-compose.yml on the GCE VM by
+# .github/workflows/deploy.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# What it changes:
+#   • Caddy terminates TLS for DOMAIN_NAME and reverse-proxies to `web`.
+#   • Kafka / kafka-ui / gRPC lose their host port bindings — only Caddy (80/443),
+#     the robot WebSocket (8080), and the command TCP/UDP relays stay reachable
+#     from outside, because robots connect to those directly.
+#   • fleet-server loses its host port too: Caddy terminates TLS for
+#     fleet.DOMAIN_NAME and proxies to it, so robots and services dial
+#     wss://fleet.<domain>/ws. No new firewall rule needed.
+services:
+  kafka:
+    ports: !reset []
+
+  kafka-ui:
+    ports: !reset []
+
+  authoritative:
+    ports: !override
+      - "8080:8080"
+
+  web:
+    ports: !reset []
+
+  fleet-server:
+    ports: !reset []
+
+  caddy:
+    image: caddy:2
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN_NAME: ${DOMAIN_NAME:?set DOMAIN_NAME in deployments/.env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - fleet-server
+
+volumes:
+  caddy_data:
+  caddy_config:
