@@ -1,0 +1,17 @@
+# Keep build contexts lean so layer caches stay sharp.
+**/node_modules
+**/.next
+**/dist
+**/build
+**/bin
+**/*.test
+**/*.out
+**/.DS_Store
+.git
+.gitignore
+Dockerfile
+.dockerignore
+.env
+.env.*
+!.env.example
+*.md

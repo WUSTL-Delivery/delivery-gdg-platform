@@ -1,56 +1,176 @@
-version: '3.8'
+# Local dev stack for the whole platform.
+#
+#   cd deployments && cp .env.example .env   # fill in Supabase + JWT values
+#   docker compose up --build                # everything
+#   docker compose up kafka kafka-ui         # just the broker (then `go run` apps natively)
+#
+# Production adds docker-compose.prod.yml on top (Caddy TLS, no host ports):
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Build contexts are relative to THIS file, so it must live in deployments/.
+
+name: delivery-gdg
 
 services:
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    hostname: zookeeper
-    container_name: zookeeper
-    ports:
-      - "2181:2181"
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    volumes:
-      - zookeeper-data:/var/lib/zookeeper/data
-      - zookeeper-logs:/var/lib/zookeeper/log
-
+  # ── Kafka (KRaft, single node — no Zookeeper) ──────────────────────────────
+  # Two listeners:
+  #   kafka:9093       → for containers on the compose network (KAFKA_BROKERS)
+  #   localhost:9092   → for apps run natively on the host with `go run`
   kafka:
-    image: confluentinc/cp-kafka:7.5.0
-    hostname: kafka
+    image: confluentinc/cp-kafka:7.7.1
     container_name: kafka
-    depends_on:
-      - zookeeper
+    hostname: kafka
+    restart: unless-stopped
     ports:
       - "9092:9092"
-      - "9093:9093"
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9093,PLAINTEXT_HOST://localhost:9092
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:29093"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9093,PLAINTEXT_HOST://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9093,PLAINTEXT_HOST://localhost:9092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
-      KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_DIRS: "/var/lib/kafka/data"
     volumes:
       - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      # Each probe spawns a full JVM (~90 MB, ~1 s of CPU). At 10s this alone
+      # kept the prod VM at ~17% CPU, so probe once a minute after start_period.
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9093 >/dev/null 2>&1"]
+      interval: 60s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
 
   kafka-ui:
-    image: provectuslabs/kafka-ui:latest
+    image: provectuslabs/kafka-ui:v0.7.2
     container_name: kafka-ui
+    restart: unless-stopped
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
     ports:
-      - "8080:8080"
+      # 8085 on the host: 8080 is taken by the authoritative WebSocket server.
+      - "8085:8080"
     environment:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9093
-      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      DYNAMIC_CONFIG_ENABLED: "true"
+
+  # ── Application services ───────────────────────────────────────────────────
+  authoritative:
+    build:
+      context: ../apps/authoritative
+    image: delivery-authoritative:latest
+    container_name: authoritative
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "50051:50051"   # gRPC (web client → OrderHandler)
+      - "8080:8080"     # robot WebSocket hub (/ws)
+    environment:
+      SUPABASE_URL: ${SUPABASE_URL:?set SUPABASE_URL in deployments/.env}
+      SUPABASE_SECRET_KEY: ${SUPABASE_SECRET_KEY:?set SUPABASE_SECRET_KEY in deployments/.env}
+      KAFKA_BROKERS: kafka:9093
+
+  command:
+    build:
+      context: ../apps/command
+    image: delivery-command:latest
+    container_name: command
+    restart: unless-stopped
+    ports:
+      - "8082:8080/tcp"  # TCP relay (8080 on host is the authoritative ws)
+      - "8081:8081/udp"  # UDP relay
+
+  # ── Fleet platform (robot connectivity, presence, intervention queue) ──────
+  # fleet-server is consumed as a PREBUILT IMAGE from the fleet-platform repo
+  # (image coupling): the tag below is the club's pin. Bump it deliberately in a
+  # reviewed commit; see deployments/README.md "Fleet platform".
+  fleet-server:
+    image: ${FLEET_SERVER_IMAGE:-ghcr.io/jaximus808/fleet-server:0.1.0}
+    container_name: fleet-server
+    restart: unless-stopped
+    ports:
+      # 8090 on the host: 8080 is the legacy authoritative hub. In prod this
+      # binding is removed and Caddy serves wss://fleet.<domain>/ws instead.
+      - "8090:8080"
+    environment:
+      FLEET_LISTEN: ":8080"
+      FLEET_DB: /var/lib/fleet/fleet.db
+      FLEET_HEARTBEAT_INTERVAL_MS: "10000"
+      FLEET_LEASE_TTL_MS: "15000"
+      FLEET_SWEEP_MS: "1000"
+      # Declarative bootstrap: on every start, make sure club-fleet exists and
+      # that FLEET_ENROLL_KEY is registered for it (idempotent). The bridge and
+      # the robots enroll with that same value, so nothing is minted on the box.
+      FLEET_BOOTSTRAP_FLEET: club-fleet
+      FLEET_BOOTSTRAP_ENROLL_KEY: ${FLEET_ENROLL_KEY:?set FLEET_ENROLL_KEY in deployments/.env (openssl rand -hex 24)}
+    volumes:
+      - fleet-data:/var/lib/fleet          # sqlite: fleets, clients, tokens
+    healthcheck:
+      test: ["CMD", "fleet-server", "-healthcheck"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  # Platform -> Kafka forwarder (apps/fleet-bridge). Enrolls once with
+  # FLEET_ENROLL_KEY (the key fleet-server seeded above) and keeps its
+  # per-service token on its volume.
+  fleet-bridge:
+    build:
+      context: ../apps/fleet-bridge
+    image: delivery-fleet-bridge:latest
+    container_name: fleet-bridge
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+      fleet-server:
+        condition: service_healthy
+    environment:
+      FLEET_URL: ws://fleet-server:8080/ws
+      FLEET_ENROLL_KEY: ${FLEET_ENROLL_KEY:?set FLEET_ENROLL_KEY in deployments/.env}
+      KAFKA_BROKERS: kafka:9093
+    volumes:
+      - fleet-bridge-data:/var/lib/fleet-bridge
+
+  web:
+    build:
+      context: ../apps/client/web
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL:?set SUPABASE_URL in deployments/.env}
+    image: delivery-web:latest
+    container_name: web
+    restart: unless-stopped
+    depends_on:
+      - authoritative
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SECRET_KEY: ${SUPABASE_SECRET_KEY:?set SUPABASE_SECRET_KEY in deployments/.env}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in deployments/.env}
+      GRPC_SERVER_URL: authoritative:50051
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
 
 volumes:
-  zookeeper-data:
-  zookeeper-logs:
   kafka-data:
+  fleet-data:
+  fleet-bridge-data:

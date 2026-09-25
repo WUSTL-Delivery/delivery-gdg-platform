@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import supabase from '../../../components/supabase';
+import { getJwtSecret } from '@/lib/jwt-secret';
 
 export async function POST(request: NextRequest) {
-    const JWT_SECRET = process.env.JWT_SECRET!
 
   try {
     const { name, email, password } = await request.json();
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
         email: newUser.email,
         name: newUser.name 
       },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: '7d' }
     );
 

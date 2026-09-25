@@ -1,17 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import supabase from '@/components/supabase';
 import { jwtVerify } from 'jose';
 import { getOrderClient } from '@/lib/grpc-client';
 import { promisify } from 'util';
+import { getJwtSecretKey } from '@/lib/jwt-secret';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'your-secret-key-change-this'
-);
 export async function POST(request: NextRequest) {
   try {
     // Get user from JWT token
@@ -20,7 +13,7 @@ export async function POST(request: NextRequest) {
 
     if (token) {
       try {
-        const { payload } = await jwtVerify(token, JWT_SECRET);
+        const { payload } = await jwtVerify(token, getJwtSecretKey());
         userId = payload.userId as string;
       } catch (error) {
         console.error('JWT verification failed:', error);

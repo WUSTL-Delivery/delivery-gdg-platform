@@ -19,7 +19,7 @@ type Database struct {
 func New() *Database {
 	godotenv.Load(".env")
 	url := os.Getenv("SUPABASE_URL")
-	apiKey := os.Getenv("SUPABASE_KEY")
+	apiKey := os.Getenv("SUPABASE_SECRET_KEY")
 	client, err := supabase.NewClient(url, apiKey, nil)
 	if err != nil {
 		panic(fmt.Sprintf("db.New: failed to create supabase client: %v", err))

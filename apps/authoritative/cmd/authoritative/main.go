@@ -115,11 +115,11 @@ func main() {
 	godotenv.Load(".env")
 
 	SUPABASE_URL := os.Getenv("SUPABASE_URL")
-	SUPABASE_KEY := os.Getenv("SUPABASE_KEY")
+	SUPABASE_SECRET_KEY := os.Getenv("SUPABASE_SECRET_KEY")
 
 	client, err := supabase.NewClient(
 		SUPABASE_URL,
-		SUPABASE_KEY,
+		SUPABASE_SECRET_KEY,
 		nil,
 	)
 	if err != nil {

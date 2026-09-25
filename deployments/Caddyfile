@@ -1,0 +1,28 @@
+# Canonicalize www → apex so Caddy provisions a cert for both and there is a
+# single public host.
+www.{$DOMAIN_NAME} {
+	redir https://{$DOMAIN_NAME}{uri} permanent
+}
+
+{$DOMAIN_NAME} {
+	# Access log to stdout (JSON) so `docker compose logs caddy` has a record of
+	# every request — there was none during the 2026-09-04 incident.
+	log {
+		output stdout
+		format json
+	}
+
+	# Web client (Next.js) — pages + /api/* route handlers. The Next server
+	# talks to the authoritative gRPC service over the internal compose network.
+	reverse_proxy web:3000
+}
+
+# Fleet platform: robots and club services connect here over WSS. Plain
+# reverse_proxy is enough — Caddy upgrades WebSocket connections transparently.
+fleet.{$DOMAIN_NAME} {
+	log {
+		output stdout
+		format json
+	}
+	reverse_proxy fleet-server:8080
+}
