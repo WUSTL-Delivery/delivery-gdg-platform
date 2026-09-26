@@ -31,7 +31,7 @@ name: Deploy to GCP Compute Engine
 #                           fleet-bridge and the robots enroll with it.
 #       FLEET_ADMIN_TOKEN — fleet-server admin API token for fleetctl and
 #                           operator invites (openssl rand -hex 32).
-#     The fleet-server image (ghcr.io/jaximus808/fleet-server) is a public
+#     The fleet-server image (ghcr.io/wustl-delivery/fleet-server) is a public
 #     package, pulled anonymously; if it is ever made private the VM needs a
 #     one-time `docker login ghcr.io` with a read:packages token.
 #  5. DNS: also add an A record for fleet.DOMAIN_NAME → the same VM. Caddy

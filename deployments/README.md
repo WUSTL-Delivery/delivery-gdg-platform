@@ -46,11 +46,11 @@ Required secrets and VM setup are documented at the top of the workflow file.
 
 ## Fleet platform
 
-`fleet-server` (from the [fleet-platform](https://github.com/jaximus808/robo-fleet-platform)
+`fleet-server` (from the [fleet-platform](https://github.com/WUSTL-Delivery/robo-fleet-platform)
 repo) runs as a prebuilt image; `fleet-bridge` (`apps/fleet-bridge`) is built here and
 forwards platform events to Kafka.
 
-**Version pin.** `docker-compose.yml` references `ghcr.io/jaximus808/fleet-server:X.Y.Z`.
+**Version pin.** `docker-compose.yml` references `ghcr.io/wustl-delivery/fleet-server:X.Y.Z`.
 That tag is the contract between the two repos: bump it in a reviewed commit when you want
 the new server. While the protocol is v0, pin the exact patch version. Release process and
 tag scheme: `fleet-platform/docs/RELEASING.md`.

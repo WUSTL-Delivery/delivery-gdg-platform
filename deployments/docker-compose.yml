@@ -98,7 +98,7 @@ services:
   # (image coupling): the tag below is the club's pin. Bump it deliberately in a
   # reviewed commit; see deployments/README.md "Fleet platform".
   fleet-server:
-    image: ${FLEET_SERVER_IMAGE:-ghcr.io/jaximus808/fleet-server:0.2.0}
+    image: ${FLEET_SERVER_IMAGE:-ghcr.io/wustl-delivery/fleet-server:0.2.0}
     container_name: fleet-server
     restart: unless-stopped
     ports:
