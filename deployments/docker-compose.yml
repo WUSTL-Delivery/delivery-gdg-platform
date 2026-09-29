@@ -98,7 +98,7 @@ services:
   # (image coupling): the tag below is the club's pin. Bump it deliberately in a
   # reviewed commit; see deployments/README.md "Fleet platform".
   fleet-server:
-    image: ${FLEET_SERVER_IMAGE:-ghcr.io/jaximus808/fleet-server:0.1.0}
+    image: ${FLEET_SERVER_IMAGE:-ghcr.io/wustl-delivery/fleet-server:0.2.0}
     container_name: fleet-server
     restart: unless-stopped
     ports:
@@ -116,6 +116,10 @@ services:
       # the robots enroll with that same value, so nothing is minted on the box.
       FLEET_BOOTSTRAP_FLEET: club-fleet
       FLEET_BOOTSTRAP_ENROLL_KEY: ${FLEET_ENROLL_KEY:?set FLEET_ENROLL_KEY in deployments/.env (openssl rand -hex 24)}
+      # Admin API for fleetctl (operator invites, enrollment keys, client
+      # revocation) and console sign-in. Empty leaves the admin API off, which
+      # is fine for local dev; prod sets it from the FLEET_ADMIN_TOKEN secret.
+      FLEET_ADMIN_TOKEN: ${FLEET_ADMIN_TOKEN:-}
     volumes:
       - fleet-data:/var/lib/fleet          # sqlite: fleets, clients, tokens
     healthcheck:

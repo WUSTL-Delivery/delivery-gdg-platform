@@ -46,11 +46,11 @@ Required secrets and VM setup are documented at the top of the workflow file.
 
 ## Fleet platform
 
-`fleet-server` (from the [fleet-platform](https://github.com/jaximus808/robo-fleet-platform)
+`fleet-server` (from the [fleet-platform](https://github.com/WUSTL-Delivery/robo-fleet-platform)
 repo) runs as a prebuilt image; `fleet-bridge` (`apps/fleet-bridge`) is built here and
 forwards platform events to Kafka.
 
-**Version pin.** `docker-compose.yml` references `ghcr.io/jaximus808/fleet-server:X.Y.Z`.
+**Version pin.** `docker-compose.yml` references `ghcr.io/wustl-delivery/fleet-server:X.Y.Z`.
 That tag is the contract between the two repos: bump it in a reviewed commit when you want
 the new server. While the protocol is v0, pin the exact patch version. Release process and
 tag scheme: `fleet-platform/docs/RELEASING.md`.
@@ -64,8 +64,24 @@ openssl rand -hex 24        # -> FLEET_ENROLL_KEY in .env (prod: the FLEET_ENROL
 On every start fleet-server makes sure `club-fleet` exists and that this key is registered
 for it (idempotent, so a fresh VM comes up ready). The bridge presents the key once on its
 first run and stores its own token on the `fleet-bridge-data` volume. Each robot does the
-same on its first boot. Rotating: set a new value and redeploy; the new key is added, the
-old one stays valid until revoked in the database.
+same on its first boot. Rotating: set a new value and redeploy (the new key is added), then
+revoke the old one with `fleetctl enroll-key revoke`. Robots already enrolled keep their
+own tokens either way.
+
+**The admin token and fleetctl.** `FLEET_ADMIN_TOKEN` (prod: the `FLEET_ADMIN_TOKEN`
+secret, `openssl rand -hex 32`) turns on fleet-server's admin API. `fleetctl` uses it to
+mint operator invites for the console, manage enrollment keys, and list or revoke clients:
+
+```bash
+export FLEETCTL_SERVER=https://fleet.<domain> FLEETCTL_TOKEN=<admin token>
+fleetctl invite operator --fleet club-fleet   # paste the key on the console at https://fleet.<domain>/
+fleetctl client list     --fleet club-fleet   # robots, the bridge, operators
+fleetctl client revoke   --fleet club-fleet r_...   # a lost robot; drops it immediately
+```
+
+Full reference: `fleet-platform/docs/FLEETCTL.md`. Empty token = admin API off (fine for
+local dev). The console itself is served at `https://fleet.<domain>/` and needs an invite
+to sign in.
 
 Fleet state (fleets, clients, tokens) is sqlite on the `fleet-data` volume. Both volumes
 survive deploys, which wipe only the checkout.
