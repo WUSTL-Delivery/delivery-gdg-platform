@@ -53,6 +53,7 @@ coverage.out
 docs/*
 !docs/*.tex
 !docs/*.pdf
+!docs/diagrams
 
 # ---- General ----
 # OS-specific

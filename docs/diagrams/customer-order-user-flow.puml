@@ -1,0 +1,121 @@
+@startuml
+title User Flow\n<size:12>WashU Delivery</size>
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 13
+skinparam ArrowColor #555555
+skinparam ArrowFontSize 11
+skinparam ActivityBorderColor #555555
+skinparam ActivityBackgroundColor #E8F5E9
+skinparam ActivityDiamondBackgroundColor #FFFFFF
+skinparam SwimlaneTitleFontStyle bold
+skinparam NoteBackgroundColor #FFFDE7
+skinparam NoteBorderColor #BDB76B
+skinparam maxMessageSize 160
+
+|Customer|
+start
+:Visit landing page **/**;
+
+|Web App (Next.js)|
+:Render marketing page;
+
+|Customer|
+:Click **Log In** or **Get Started**;
+
+|Web App (Next.js)|
+if (Has valid **auth-token** cookie?) then (yes)
+else (no)
+  |Customer|
+  :Sign up or log in at **/login**;
+  |Web App (Next.js)|
+  :POST /api/signup or /api/signin
+  bcrypt check vs Supabase **users**
+  set 7-day JWT cookie;
+endif
+:Show vendor grid **/dashboard**
+(8 hard-coded campus vendors);
+
+|Customer|
+:Pick a vendor;
+
+|Web App (Next.js)|
+:Show menu + cart at **/dashboard/[vendor]**;
+note right
+  Menu is mocked: same
+  3 items for every vendor.
+  No payment (out of scope).
+end note
+
+|Customer|
+:Add items to cart
+choose drop-off (South 40 / Olin)
+submit order;
+
+|Web App (Next.js)|
+:POST /api/orders
+look up vendor + drop-off coordinates;
+
+|Backend Services|
+:gRPC **OrderHandler.InsertOrder**
+→ save to Supabase **orders** + **orderItems**
+(status = "pending"); <<#FFE0B2>>
+note right
+  <color:#E65100><b>Not wired:</b></color>
+  handler is commented out
+  in authoritative/main.go
+end note
+:Matcher pairs order with
+next idle robot (every 1s)
+(in memory, not saved);
+
+|Web App (Next.js)|
+:Redirect to **/order/[id]**;
+
+|Customer|
+repeat
+  :Watch tracking page
+  (status card, timeline, robot ID);
+  |Web App (Next.js)|
+  :Poll GET /api/orders/[id] every 5s;
+  |Backend Services|
+  :Update order status
+  pending → preparing → ready → in_transit; <<#FFE0B2>>
+  |Robot & Fleet|
+  :Robot picks up at vendor
+  drives to drop-off; <<#FFE0B2>>
+  if (Robot gets stuck?) then (yes)
+    :Robot requests help
+    (HELP_REQUESTED);
+    :Operator takes over via
+    fleet console (TELEOP lease);
+  else (no)
+  endif
+  |Customer|
+repeat while (Order delivered?) is (not yet)
+-> yes;
+
+|Robot & Fleet|
+:Robot arrives at drop-off
+(AT_DROPOFF); <<#FFE0B2>>
+
+|Customer|
+:Meet robot and collect order; <<#FFE0B2>>
+
+|Backend Services|
+:Mark order **delivered**; <<#FFE0B2>>
+
+|Robot & Fleet|
+:Robot returns (RETURNING → IDLE); <<#FFE0B2>>
+
+|Customer|
+:Order received; <<#C8E6C9>>
+stop
+
+legend bottom
+  |<back:#E8F5E9>    </back>| Implemented today |
+  |<back:#FFE0B2>    </back>| Planned / not yet wired up |
+endlegend
+@enduml
