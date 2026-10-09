@@ -67,9 +67,24 @@ note right
   handler is commented out
   in authoritative/main.go
 end note
+if (Order saved?) then (no — today)
+  |Web App (Next.js)|
+  :API returns 500
+  "Failed to create order"; <<#FFCDD2>>
+  |Customer|
+  :Sees error on menu page
+  no redirect, order lost; <<#FFCDD2>>
+  stop
+else (yes — once wired)
+endif
+|Backend Services|
 :Matcher pairs order with
 next idle robot (every 1s)
-(in memory, not saved);
+(in memory, not saved); <<#FFE0B2>>
+note right
+  Loop runs, but only
+  InsertOrder feeds it orders
+end note
 :Dispatch: plan route + ETA
 vendor → waypoints → drop-off
 send route to robot; <<#FFE0B2>>
@@ -126,5 +141,6 @@ stop
 legend bottom
   |<back:#E8F5E9>    </back>| Implemented today |
   |<back:#FFE0B2>    </back>| Planned / not yet wired up |
+  |<back:#FFCDD2>    </back>| What happens today (failure) |
 endlegend
 @enduml
