@@ -167,12 +167,29 @@ services:
       SUPABASE_SECRET_KEY: ${SUPABASE_SECRET_KEY:?set SUPABASE_SECRET_KEY in deployments/.env}
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in deployments/.env}
       GRPC_SERVER_URL: authoritative:50051
+      # SMTP for sign-up verification codes. Locally this defaults to the
+      # mailpit catcher below; prod requires a real server (prod overlay).
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-WashU Delivery <no-reply@delivery.local>}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"]
       interval: 30s
       timeout: 3s
       retries: 5
       start_period: 15s
+
+  # ── Local mail catcher ─────────────────────────────────────────────────────
+  # Receives the verification emails `web` sends during local sign-ups; read
+  # them at http://localhost:8025. Disabled in prod (docker-compose.prod.yml).
+  mailpit:
+    image: axllent/mailpit:v1.31.4
+    container_name: mailpit
+    restart: unless-stopped
+    ports:
+      - "8025:8025"     # web inbox (SMTP is 1025, compose network only)
 
 volumes:
   kafka-data:

@@ -7,6 +7,8 @@
 #   • Kafka / kafka-ui / gRPC lose their host port bindings — only Caddy (80/443),
 #     the robot WebSocket (8080), and the command TCP/UDP relays stay reachable
 #     from outside, because robots connect to those directly.
+#   • web must be given a real SMTP server for sign-up verification emails,
+#     and the local mailpit catcher is not started.
 #   • fleet-server loses its host port too: Caddy terminates TLS for
 #     fleet.DOMAIN_NAME and proxies to it, so robots and services dial
 #     wss://fleet.<domain>/ws. No new firewall rule needed.
@@ -23,6 +25,13 @@ services:
 
   web:
     ports: !reset []
+    environment:
+      SMTP_HOST: ${SMTP_HOST:?set SMTP_HOST in deployments/.env}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_FROM: ${SMTP_FROM:?set SMTP_FROM in deployments/.env}
+
+  mailpit:
+    profiles: ["local-mail"]
 
   fleet-server:
     ports: !reset []

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 import { getJwtSecretKey } from '@/lib/jwt-secret';
+import { isAllowedEmail } from '@/lib/email-domain';
 
 
 export async function proxy(request: NextRequest) {
@@ -19,7 +20,11 @@ export async function proxy(request: NextRequest) {
 
   if (token) {
     try {
-      await jwtVerify(token, getJwtSecretKey());
+      const { payload } = await jwtVerify(token, getJwtSecretKey());
+      // Sessions issued before sign-in was limited to WashU addresses
+      if (!isAllowedEmail(payload.email)) {
+        throw new Error('Email domain not allowed');
+      }
       return NextResponse.next();
     } catch {
       // Invalid token, clear it and redirect
