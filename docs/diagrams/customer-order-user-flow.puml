@@ -51,7 +51,7 @@ end note
 
 |Customer|
 :Add items to cart
-choose drop-off (South 40 / Olin)
+choose drop-off
 submit order;
 
 |Web App (Next.js)|
@@ -70,6 +70,15 @@ end note
 :Matcher pairs order with
 next idle robot (every 1s)
 (in memory, not saved);
+:Dispatch: plan route + ETA
+vendor → waypoints → drop-off
+send route to robot; <<#FFE0B2>>
+note right
+  <color:#E65100><b>Stub only:</b></color>
+  internal/routing + dispatch.
+  Robot does local planning
+  on board (not in this repo)
+end note
 
 |Web App (Next.js)|
 :Redirect to **/order/[id]**;
