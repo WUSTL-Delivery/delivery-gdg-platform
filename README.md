@@ -16,6 +16,7 @@ Prereqs: Docker Desktop (with `docker compose` v2). Go 1.25+ and Node 22+ only i
 # 1. Configure secrets (Supabase URL/keys + a JWT secret)
 cp deployments/.env.example deployments/.env
 #    ...edit deployments/.env
+#    Apply supabase/migrations/*.sql to your Supabase project (SQL editor).
 
 # 2. Build and start everything (Kafka, authoritative, command, web)
 ./scripts/rebuild.sh            # foreground; Ctrl-C to stop
@@ -31,6 +32,7 @@ cp deployments/.env.example deployments/.env
 |-----------------|---------------------------------|
 | Web client      | http://localhost:3000           |
 | Kafka UI        | http://localhost:8085           |
+| Mailpit (sign-up verification emails) | http://localhost:8025 |
 | gRPC (authoritative) | localhost:50051            |
 | Robot WebSocket (legacy hub) | ws://localhost:8080/ws |
 | Fleet platform WebSocket | ws://localhost:8090/ws    |

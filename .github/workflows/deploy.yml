@@ -31,11 +31,17 @@ name: Deploy to GCP Compute Engine
 #                           fleet-bridge and the robots enroll with it.
 #       FLEET_ADMIN_TOKEN — fleet-server admin API token for fleetctl and
 #                           operator invites (openssl rand -hex 32).
+#       SMTP_HOST, SMTP_FROM — outbound mail for the sign-up verification
+#                           codes (SMTP_FROM e.g. "WashU Delivery <no-reply@…>").
+#         Optional: SMTP_PORT (default 587; 465 = implicit TLS), SMTP_USER,
+#                   SMTP_PASS.
 #     The fleet-server image (ghcr.io/wustl-delivery/fleet-server) is a public
 #     package, pulled anonymously; if it is ever made private the VM needs a
 #     one-time `docker login ghcr.io` with a read:packages token.
 #  5. DNS: also add an A record for fleet.DOMAIN_NAME → the same VM. Caddy
 #     provisions its cert and proxies wss://fleet.<domain>/ws to fleet-server.
+#  6. Database: apply supabase/migrations/*.sql to the Supabase project (SQL
+#     editor or `supabase db push`) before the first deploy that needs them.
 
 on:
   push:
@@ -76,6 +82,10 @@ jobs:
           npm ci --no-audit --no-fund
           npm audit --omit=dev --audit-level=critical
 
+      - name: Tests (web)
+        working-directory: apps/client/web
+        run: npm test
+
       - name: npm audit + typecheck (fleet-bridge)
         working-directory: apps/fleet-bridge
         run: |
@@ -94,6 +104,10 @@ jobs:
       - name: govulncheck (authoritative)
         working-directory: apps/authoritative
         run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+      - name: Tests (authoritative)
+        working-directory: apps/authoritative
+        run: go test ./...
 
       - name: govulncheck (command)
         working-directory: apps/command
@@ -124,10 +138,24 @@ jobs:
           DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
           FLEET_ENROLL_KEY: ${{ secrets.FLEET_ENROLL_KEY }}
           FLEET_ADMIN_TOKEN: ${{ secrets.FLEET_ADMIN_TOKEN }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
         run: |
-          for v in SUPABASE_URL SUPABASE_SECRET_KEY JWT_SECRET DOMAIN_NAME FLEET_ENROLL_KEY FLEET_ADMIN_TOKEN; do
+          for v in SUPABASE_URL SUPABASE_SECRET_KEY JWT_SECRET DOMAIN_NAME FLEET_ENROLL_KEY FLEET_ADMIN_TOKEN SMTP_HOST SMTP_FROM; do
             if [ -z "${!v}" ]; then
               echo "::error::secret $v is not set in the 'prod' environment"
+              exit 1
+            fi
+          done
+          # Free-form values are written single-quoted below so compose takes
+          # them literally ($, #, spaces, "Name" <addr>). A ' can't be quoted,
+          # and a trailing \ would escape the closing quote.
+          for v in SMTP_USER SMTP_PASS SMTP_FROM; do
+            if [[ "${!v}" == *"'"* || "${!v}" == *\\ ]]; then
+              echo "::error::secret $v must not contain a single quote (') or end with a backslash"
               exit 1
             fi
           done
@@ -138,6 +166,11 @@ jobs:
           DOMAIN_NAME=$DOMAIN_NAME
           FLEET_ENROLL_KEY=$FLEET_ENROLL_KEY
           FLEET_ADMIN_TOKEN=$FLEET_ADMIN_TOKEN
+          SMTP_HOST=$SMTP_HOST
+          SMTP_PORT=$SMTP_PORT
+          SMTP_USER='$SMTP_USER'
+          SMTP_PASS='$SMTP_PASS'
+          SMTP_FROM='$SMTP_FROM'
           EOT
 
       - name: Clean up for transfer

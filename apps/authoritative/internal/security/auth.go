@@ -2,6 +2,7 @@ package security
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"log/slog"
@@ -69,6 +70,9 @@ func buildAuthBaseURL(supabaseURL string) (string, error) {
 
 func (s *AuthService) Signup(email, password string, metadata map[string]interface{}) (*authtypes.SignupResponse, error) {
 	// Signs up a new user with email and password, along with optional metadata.
+	if !IsAllowedEmail(email) {
+		return nil, ErrEmailDomainNotAllowed
+	}
 	req := authtypes.SignupRequest{
 		Email:    strings.TrimSpace(email),
 		Password: password,
@@ -79,6 +83,9 @@ func (s *AuthService) Signup(email, password string, metadata map[string]interfa
 
 func (s *AuthService) SignInWithPassword(email, password string) (*authtypes.TokenResponse, error) {
 	// Signs in a user with email and password.
+	if !IsAllowedEmail(email) {
+		return nil, ErrEmailDomainNotAllowed
+	}
 	return s.client.SignInWithEmailPassword(strings.TrimSpace(email), password)
 }
 
@@ -130,6 +137,10 @@ func (s *AuthHTTPServer) handleSignup(w http.ResponseWriter, r *http.Request) {
 	res, err := s.auth.Signup(req.Email, req.Password, map[string]interface{}{
 		"role": "customer",
 	})
+	if errors.Is(err, ErrEmailDomainNotAllowed) {
+		writeJSONError(w, http.StatusBadRequest, "Only @"+AllowedEmailDomain+" email addresses are allowed")
+		return
+	}
 	if err != nil {
 		slog.Error(err.Error())
 		writeJSONError(w, http.StatusUnauthorized, "Error: could not complete signup")
@@ -153,6 +164,10 @@ func (s *AuthHTTPServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tokens, err := s.auth.SignInWithPassword(req.Email, req.Password)
+	if errors.Is(err, ErrEmailDomainNotAllowed) {
+		writeJSONError(w, http.StatusBadRequest, "Only @"+AllowedEmailDomain+" email addresses are allowed")
+		return
+	}
 	if err != nil {
 		writeJSONError(w, http.StatusUnauthorized, "invalid credentials")
 		return

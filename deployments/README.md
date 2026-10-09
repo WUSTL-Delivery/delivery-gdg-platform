@@ -17,6 +17,7 @@ cp deployments/.env.example deployments/.env   # fill in Supabase + JWT values
 | command        | 8081/udp  | UDP relay                                          |
 | kafka          | 9092      | host listener for `go run` apps (`localhost:9092`) |
 | kafka-ui       | 8085      | http://localhost:8085                              |
+| mailpit        | 8025      | http://localhost:8025 — catches sign-up verification emails (local only) |
 
 Inside the compose network apps use `KAFKA_BROKERS=kafka:9093` and
 `GRPC_SERVER_URL=authoritative:50051`.
@@ -27,6 +28,20 @@ Just the broker, running the Go apps natively:
 cd deployments && docker compose up kafka kafka-ui
 cd apps/authoritative && go run ./cmd/authoritative      # uses localhost:9092
 ```
+
+## Accounts and email verification
+
+Sign-up and login accept only `@wustl.edu` addresses, and a new account is
+created only after its owner enters the 6-digit code emailed to them. Pending
+sign-ups live in the `pending_signups` table: apply
+`supabase/migrations/20261009120000_pending_signups.sql` (Supabase dashboard →
+SQL editor, or `supabase db push`) **before** deploying a web build that uses it.
+
+Codes are sent over SMTP (`SMTP_*` in `.env`, see `.env.example`). Locally,
+compose points `web` at mailpit, so leave them empty and read the emails at
+http://localhost:8025. `npm run dev` with no `SMTP_HOST` prints the code to the
+server log instead. In prod, `SMTP_HOST` and `SMTP_FROM` are required and mailpit
+is not started.
 
 ## Production (GCE VM)
 
