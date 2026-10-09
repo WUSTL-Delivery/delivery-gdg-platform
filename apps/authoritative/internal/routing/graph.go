@@ -1,10 +1,9 @@
 package routing
 
 import (
-	"archive.zip"
+	"archive/zip"
 	"bytes"
-	"container/heap"
-	"encoding/json"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"math"
@@ -14,10 +13,10 @@ import (
 )
 
 const (
-	NodePath: int8 = 0
-	NodeCrosswalk: int8 = 1
-	NodePickup: int8 = 2
-	NodeDropoff: int8 = 3
+	NodePath int8 = 0
+	NodeCrosswalk int8 = 1
+	NodePickup int8 = 2
+	NodeDropoff int8 = 3
 )
 
 type Location struct {
@@ -238,35 +237,4 @@ func Load(path string) (*Graph, error) {
 		g.Indices[i], g.EdgeID[i] = int32(ind[i]), int32(eid[i])
 	}
 	return g, nil
-}
-
-type pqItem struct {
-	node int32
-	dist float64
-}
-type pq []pqItem
-
-func (p pq) Len() int            { return len(p) }
-func (p pq) Less(i, j int) bool  { return p[i].dist < p[j].dist }
-func (p pq) Swap(i, j int)       { p[i], p[j] = p[j], p[i] }
-func (p *pq) Push(x interface{}) { *p = append(*p, x.(pqItem)) }
-func (p *pq) Pop() interface{} {
-	o := *p
-	it := o[len(o)-1]
-	*p = o[:len(o)-1]
-	return it
-}func (q astarHeap) Less(i, j int) bool {
-	if d := q[i].f - q[j].f; d < -tieEps || d > tieEps {
-		return d < 0
-	}
-	return q[i].g > q[j].g
-}
- 
-func (q astarHeap) Swap(i, j int)       { q[i], q[j] = q[j], q[i] }
-func (q *astarHeap) Push(x interface{}) { *q = append(*q, x.(astarItem)) }
-func (q *astarHeap) Pop() interface{} {
-	old := *q
-	it := old[len(old)-1]
-	*q = old[:len(old)-1]
-	return it
 }
