@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Web Client
 
-## Getting Started
+The customer-facing site (Next.js 16, App Router, Tailwind). It also hosts the `/api/*`
+routes, which are the only backend the browser talks to. They read Supabase directly and
+call the authoritative server over gRPC.
 
-First, run the development server:
+## Run
 
 ```bash
+# Easiest: the whole stack from the repo root
+./scripts/rebuild.sh            # then open http://localhost:3000
+
+# Or just the web app (needs authoritative running for orders)
+cd apps/client/web
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run lint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+When running natively, create `apps/client/web/.env.local`:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variable | Notes |
+|----------|-------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Same value as `SUPABASE_URL` in `deployments/.env` |
+| `SUPABASE_SECRET_KEY` | Server-side only. Never use it in a client component |
+| `JWT_SECRET` | Signs the `auth-token` cookie |
+| `GRPC_SERVER_URL` | Defaults to `localhost:50051` |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Pages and routes
 
-## Learn More
+| Path | What |
+|------|------|
+| `/` | Landing page |
+| `/login` | Sign up / log in (one form, toggles mode) |
+| `/dashboard` | Vendor grid (protected by `proxy.ts`) |
+| `/dashboard/[vendor]` | Menu, cart, drop-off picker, place order |
+| `/order/[id]` | Order tracking, polls every 5 s |
+| `POST /api/signup`, `POST /api/signin`, `POST /api/signout` | Auth; sets/clears the `auth-token` JWT cookie |
+| `POST /api/orders` | Creates an order via gRPC `InsertOrder` (currently fails, see [status](../../../docs/STATUS.md)) |
+| `GET /api/orders/[id]` | Order + items + drop-off, read from Supabase |
 
-To learn more about Next.js, take a look at the following resources:
+## Key files
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Path | What |
+|------|------|
+| `proxy.ts` | Route protection (Next 16's replacement for `middleware.ts`) |
+| `lib/grpc-client.ts`, `proto/` | gRPC client for the authoritative `OrderHandler` |
+| `lib/jwt-secret.ts` | JWT key loading |
+| `components/supabase.ts` | Lazily created server-side Supabase client |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The full order flow is in [docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md).
