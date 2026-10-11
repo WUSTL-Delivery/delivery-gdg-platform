@@ -1,7 +1,6 @@
 package routing
 
 import (
-	"container/heap"
 	"errors"
 	"fmt"
 	"math"
@@ -39,11 +38,7 @@ func (g *Graph) MinCostPerPixel() (float64, error) {
 }
 
 func (g *Graph) AStar(src, dst int32) (PathResult, error) {
-	scale, err := g.MinCostPerPixel()
-	if err != nil {
-		return PathResult{}, err
-	}
-	return g.AStarWithScale(src, dst, scale)
+	return g.AStarWithScale(src, dst, g.scale)
 }
 
 func (g *Graph) AStarWithScale(src, dst int32, scale float64) (PathResult, error) {
@@ -56,7 +51,10 @@ func (g *Graph) AStarWithScale(src, dst int32, scale float64) (PathResult, error
 	}
 
 	gx, gy := g.X[dst], g.Y[dst]
-	h := func(v int32) float64 { return scale * math.Hypot(g.X[v]-gx, g.Y[v]-gy) }
+	h := func(v int32) float64 { 
+		dx, dy := g.X[v]-gx, g.Y[v]-gy
+		return scale * math.Sqrt(dx*dx+dy*dy) 
+	}
 
 	gScore := make([]float64, n)
 	prev := make([]int32, n)
@@ -67,11 +65,12 @@ func (g *Graph) AStarWithScale(src, dst int32, scale float64) (PathResult, error
 	}
 	gScore[src] = 0
 
-	open := &astarHeap{{node: src, g: 0, f: h(src)}}
+	open := make(astarHeap, 0, 128)
+	open.push(astarItem{node: src, g: 0, f: h(src)})
 	expanded := 0
 
-	for open.Len() > 0 {
-		it := heap.Pop(open).(astarItem)
+	for len(open) > 0 {
+		it := open.pop()
 		u := it.node
 		if closed[u] || it.g > gScore[u] {
 			continue // stale entry: u was already reached more cheaply
@@ -87,14 +86,10 @@ func (g *Graph) AStarWithScale(src, dst int32, scale float64) (PathResult, error
 			if closed[v] {
 				continue // with a consistent heuristic, closed nodes are final
 			}
-			w := g.Weights[g.EdgeID[k]]
-			if w < 0 || math.IsNaN(w) {
-				return PathResult{}, fmt.Errorf("campusgraph: edge %d has invalid weight %v", g.EdgeID[k], w)
-			}
-			if t := gScore[u] + w; t < gScore[v] {
+			if t := gScore[u] + g.Weights[g.EdgeID[k]]; t < gScore[v] {
 				gScore[v] = t
 				prev[v] = u
-				heap.Push(open, astarItem{node: v, g: t, f: t + h(v)})
+				open.push(astarItem{node: v, g: t, f: t + h(v)})
 			}
 		}
 	}
@@ -124,18 +119,50 @@ const tieEps = 1e-9
 
 func (q astarHeap) Len() int { return len(q) }
 
-func (q astarHeap) Less(i, j int) bool {
-	if d := q[i].f - q[j].f; d < -tieEps || d > tieEps {
+func (a astarItem) less(b astarItem) bool {
+	if d := a.f - b.f; d < -tieEps || d > tieEps {
 		return d < 0
 	}
-	return q[i].g > q[j].g
+	return a.g > b.g // break ties in favor of longer paths (more likely to be on the same road)
 }
 
 func (q astarHeap) Swap(i, j int)       { q[i], q[j] = q[j], q[i] }
-func (q *astarHeap) Push(x interface{}) { *q = append(*q, x.(astarItem)) }
-func (q *astarHeap) Pop() interface{} {
-	old := *q
-	it := old[len(old)-1]
-	*q = old[:len(old)-1]
-	return it
+
+func (q *astarHeap) push (it astarItem) {
+	*q = append(*q, it)
+	h := *q
+	i := len(h) - 1
+	for i > 0 {
+		p := (i - 1) / 2
+		if !h[i].less(h[p]) {
+			break
+		}
+		h[i], h[p] = h[p], h[i]
+		i = p
+	}
+}
+
+func (q *astarHeap) pop() astarItem {
+	h := *q
+	top := h[0]
+	n := len(h) - 1
+	h[0] = h[n]
+	h = h[:n]
+	for i := 0; ; {
+		l := 2*i + 1
+		if l >= n {
+			break
+		}
+		m := 1
+		if r := l + 1; r < n && h[r].less(h[l]) {
+			m = r
+		}
+		if !h[m].less(h[i]) {
+			break
+		}
+		h[i], h[m] = h[m], h[i]
+		i = m
+	}
+	*q = h
+	return top
 }

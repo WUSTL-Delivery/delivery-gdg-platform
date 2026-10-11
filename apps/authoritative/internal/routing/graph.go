@@ -39,12 +39,25 @@ type Graph struct {
 	Indptr  []int64
 	Indices []int32
 	EdgeID  []int32
+	scale float64 // scale factor for heuristic (pixels -> meters)
 }
 
 func (g *Graph) NumNodes() int { return len(g.X) }
 
 // SetWeight updates an undirected edge
-func (g *Graph) SetWeight(edge int, w float64) { g.Weights[edge] = w }
+func (g *Graph) SetWeight(edge int, w float64) error { 
+	if w < 0 || math.IsNaN(w) {
+		return fmt.Errorf("campusgraph: edge %d has invalid weight %v", edge, w)
+	}
+	g.Weights[edge] = w
+	u, v := g.Edges[edge][0], g.Edges[edge][1]
+	if l := math.Hypot(g.X[u]-g.X[v], g.Y[u]-g.Y[v]); l > 0 {
+		if r := w / l; r < g.scale {
+			g.scale = r
+		}
+	}
+	return nil
+}
 
 type npyArray struct {
 	descr string
@@ -128,6 +141,15 @@ func (a *npyArray) ints() ([]int64, error) {
 		}
 	}
 	return out, nil
+}
+
+func (g *Graph) RecomputeScale() error {
+	s, err := g.MinCostPerPixel()
+	if err != nil {
+		return err
+	}
+	g.scale = s
+	return nil
 }
 
 func Load(path string) (*Graph, error) {
@@ -235,6 +257,9 @@ func Load(path string) (*Graph, error) {
 	g.Indices, g.EdgeID = make([]int32, len(ind)), make([]int32, len(eid))
 	for i := range ind {
 		g.Indices[i], g.EdgeID[i] = int32(ind[i]), int32(eid[i])
+	}
+	if g.scale, err = g.MinCostPerPixel(); err != nil {
+		return nil, err
 	}
 	return g, nil
 }
