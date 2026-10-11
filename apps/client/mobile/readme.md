@@ -1,3 +1,0 @@
-# Mobile
-
-Initial mobile folder

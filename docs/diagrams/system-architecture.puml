@@ -1,0 +1,59 @@
+@startuml
+title System Architecture\n<size:12>WashU GDG Delivery Robot Platform</size>
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 13
+skinparam ArrowColor #555555
+skinparam ArrowFontSize 11
+skinparam rectangle {
+  BorderColor #555555
+  BackgroundColor #E3F2FD
+}
+skinparam database {
+  BorderColor #555555
+  BackgroundColor #F3E5F5
+}
+skinparam queue {
+  BorderColor #555555
+  BackgroundColor #FFF3E0
+}
+skinparam actor {
+  BorderColor #555555
+  BackgroundColor #FFFFFF
+}
+
+actor "Customer" as customer
+actor "Operator" as operator
+
+package "This repo" {
+  rectangle "**web**\nNext.js pages + /api/*\n:3000" as web
+  rectangle "**authoritative**\nGo: gRPC OrderHandler,\nmatcher, legacy WS hub" as auth
+  rectangle "**command**\nTCP/UDP relay\n:8082 / :8081" as command
+  rectangle "**fleet-bridge**\nfleet events → Kafka" as bridge
+}
+
+rectangle "**fleet-server**\n(external image)\npresence, telemetry,\noperator leases" as fleet #E8F5E9
+database "Supabase\nusers, orders, orderItems,\nvendors, coordinates, robots" as supa
+queue "Kafka\nrobot-update\nrobot-telemetry\nrobot-ops" as kafka
+rectangle "**Robots**\n(delivery-robo, ROS 2)" as robots #E8F5E9
+
+customer --> web : HTTPS
+web --> supa : SQL (secret key,\nserver-side only)
+web --> auth : gRPC :50051
+auth --> supa : SQL
+auth <--> robots : WebSocket :8080/ws\n(legacy hub)
+robots <--> fleet : WebSocket /ws
+robots <..> command : TCP / UDP
+operator --> fleet : console, teleop lease
+fleet --> bridge : events
+bridge --> kafka : publish
+kafka ..> auth : not consumed yet
+
+legend bottom
+  |<back:#E3F2FD>    </back>| Built in this repo |
+  |<back:#E8F5E9>    </back>| External (other repo / image) |
+  | ··> | Planned or unused path |
+endlegend
+@enduml
