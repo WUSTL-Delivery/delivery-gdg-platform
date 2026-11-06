@@ -1,12 +1,13 @@
 # WashU GDG Delivery Robot Monorepo
 
-<img src="https://github.com/jaximus808/delivery-gdg-platform/blob/main/assets/gdg_logo.jpg" width="48">
+<img src="assets/gdg_logo.jpg" alt="WashU GDG logo" width="48">
 
 ---
 
 Campus food delivery by robot. A student orders from a campus vendor on the website, a
-robot is matched to the order, picks it up, and drives it to a drop-off point on campus. This repo holds the web app, the backend that matches orders to robots, and the
-glue to the robot fleet. The robot's onboard software lives in
+robot is matched to the order, picks it up, and drives it to a drop-off point on campus.
+This repo holds the web app, the backend that matches orders to robots, and the glue to
+the robot fleet. The robot's onboard software lives in
 [delivery-robo](https://github.com/WUSTL-Delivery/delivery-robo).
 
 **New?** Read this page, then [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (how the
@@ -40,9 +41,11 @@ Prereqs: Docker Desktop (with `docker compose` v2). Go 1.26+ (`apps/authoritativ
 cp deployments/.env.example deployments/.env
 #    ...edit deployments/.env
 
-# 2. Build and start everything (Kafka, authoritative, command, web)
+# 2. Build and start everything (Kafka + Kafka UI, authoritative, command,
+#    fleet-server, fleet-bridge, web)
 ./scripts/rebuild.sh            # foreground; Ctrl-C to stop
 ./scripts/rebuild.sh -d         # or detached
+./scripts/rebuild.sh --no-cache # full rebuild, ignoring the Docker cache
 
 # 3. Useful commands
 ./scripts/rebuild.sh ps         # status
@@ -50,15 +53,17 @@ cp deployments/.env.example deployments/.env
 ./scripts/rebuild.sh down       # stop + remove containers
 ```
 
-| What            | URL / port                      |
-|-----------------|---------------------------------|
-| Web client      | http://localhost:3000           |
-| Kafka UI        | http://localhost:8085           |
-| gRPC (authoritative) | localhost:50051            |
-| Robot WebSocket (legacy hub) | ws://localhost:8080/ws |
-| Fleet platform WebSocket | ws://localhost:8090/ws    |
-| Command TCP / UDP | localhost:8082 / localhost:8081 |
-| Kafka (host)    | localhost:9092                  |
+Once it's up:
+
+| What                         | URL / port                      |
+|------------------------------|---------------------------------|
+| Web client                   | http://localhost:3000           |
+| Kafka UI                     | http://localhost:8085           |
+| gRPC (authoritative)         | localhost:50051                 |
+| Robot WebSocket (legacy hub) | ws://localhost:8080/ws          |
+| Fleet platform WebSocket     | ws://localhost:8090/ws          |
+| Command TCP / UDP            | localhost:8082 / localhost:8081 |
+| Kafka (host)                 | localhost:9092                  |
 
 Run only Kafka in Docker and the apps natively:
 
@@ -75,10 +80,10 @@ Robot connectivity, presence, and the operator intervention queue come from
 [fleet-platform](https://github.com/WUSTL-Delivery/robo-fleet-platform), consumed as a
 prebuilt `fleet-server` image pinned in `deployments/docker-compose.yml`.
 `apps/fleet-bridge` is the club's first client on it: it forwards platform events to
-Kafka so existing consumers keep working. Integration guide:
-`fleet-platform/docs/INTEGRATION.md`. Operating it here: `deployments/README.md`.
+Kafka so existing consumers keep working.
 
-See `deployments/README.md` for the full port table and the production/GCP deploy flow.
+- Integration guide: [robo-fleet-platform/docs/INTEGRATION.md](https://github.com/WUSTL-Delivery/robo-fleet-platform/blob/main/docs/INTEGRATION.md)
+- Running it in this repo, and the production (GCE VM) deploy: [deployments/README.md](deployments/README.md)
 
 ## Where to start contributing
 
